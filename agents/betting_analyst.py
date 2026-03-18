@@ -44,6 +44,8 @@ from skills.human_intelligence_layer import HumanIntelligenceLayer
 
 # Phase 10 Skills
 from skills.elite_intelligence_core import EliteIntelligenceCore
+from integrations.youtube_monitor import YouTubeMonitor
+from integrations.knowledge_processor import KnowledgeProcessor
 
 class BettingAnalyst:
     def __init__(self):
