@@ -11,3 +11,4 @@ streamlit
 youtube-transcript-api
 feedparser
 plotly
+altair<5
