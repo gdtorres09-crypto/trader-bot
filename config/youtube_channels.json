@@ -1,0 +1,22 @@
+[
+    {
+        "name": "TNT Sports Brasil",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCv7uIDvSTpZ_UIdnshY8yWA",
+        "type": "football"
+    },
+    {
+        "name": "NBA Brasil",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC_t-X1P9Z86wD6xJ9h_qY2A",
+        "type": "nba"
+    },
+    {
+        "name": "GOAL Brasil",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6YInC52nS8UfT65nQ_m6ig",
+        "type": "football"
+    },
+    {
+        "name": "SofaScore Brasil",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCs6V-UfW9K3-8K8X-9nXY-A",
+        "type": "stats"
+    }
+]

@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 from datetime import datetime
 from typing import List, Dict
 
@@ -16,21 +17,25 @@ class AutoTrader:
     
     def __init__(self, agent):
         self.agent = agent
-        self.sent_signals = set() # (home_team, away_team, market, odd)
+        self.sent_signals = [] # Lista de dicionários (histórico completo)
         self.history_file = "data/signals_history.json"
         self._load_history()
 
     def _load_history(self):
         try:
+            if not os.path.exists(self.history_file):
+                self.sent_signals = []
+                return
             with open(self.history_file, 'r') as f:
-                data = json.load(f)
-                self.sent_signals = set(tuple(s) for s in data)
+                self.sent_signals = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            self.sent_signals = set()
+            self.sent_signals = []
 
     def _save_history(self):
+        # Garantir diretório data/
+        os.makedirs(os.path.dirname(self.history_file), exist_ok=True)
         with open(self.history_file, 'w') as f:
-            json.dump(list(self.sent_signals), f)
+            json.dump(self.sent_signals, f, indent=4)
 
     def calculate_ev(self, probability: float, odd: float) -> float:
         """
@@ -90,10 +95,16 @@ class AutoTrader:
         
         signals = []
         for opt in opportunities:
-            # Chave de deduplicação
-            signal_key = (opt['home'], opt['away'], opt['market'], round(opt['odd'], 2))
+            # Chave de deduplicação usando os dados básicos
+            # Verificamos se já enviamos esse jogo/mercado/odd hoje
+            already_sent = any(
+                s['home'] == opt['home'] and 
+                s['away'] == opt['away'] and 
+                s['market'] == opt['market'] 
+                for s in self.sent_signals
+            )
             
-            if signal_key in self.sent_signals:
+            if already_sent:
                 continue
                 
             # 2. Calcular EV
@@ -102,13 +113,14 @@ class AutoTrader:
             # 3. Filtrar apenas EV Positivo (Phase 24)
             if ev > 0.02: 
                 opt['ev'] = ev
+                opt['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 # Acessa o valor numérico dentro do objeto BankrollOptimizer
                 current_bankroll = self.agent.bankroll.bankroll
                 opt['stake'] = self.calculate_stake(ev, opt.get('confidence', 0.5), current_bankroll)
                 
                 # Formatar e adicionar
                 signals.append(self.format_signal(opt))
-                self.sent_signals.add(signal_key)
+                self.sent_signals.append(opt) # Salvar objeto completo no histórico
         
         if signals:
             self._save_history()
