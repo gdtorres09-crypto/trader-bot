@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import logging
-import lxml
+# import lxml
 from youtube_transcript_api import YouTubeTranscriptApi
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class KnowledgeProcessor:
             if response.status_code != 200:
                 return {"ok": False, "error": f"Status {response.status_code}"}
             
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             
             # Remover scripts e estilos
             for script in soup(["script", "style"]):
