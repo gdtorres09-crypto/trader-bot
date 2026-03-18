@@ -32,12 +32,17 @@ st.markdown("---")
 
 # Funções de Dados
 def load_history():
-    if os.path.exists("data/signals_history.json"):
-        with open("data/signals_history.json", 'r') as f:
-            data = json.load(f)
-            # Transformar set em lista de dicts se necessário
-            return pd.DataFrame(data, columns=["Home", "Away", "Mercado", "Odd"])
-    return pd.DataFrame()
+    path = "data/signals_history.json"
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+                if not data:
+                    return pd.DataFrame(columns=["Home", "Away", "Mercado", "Odd"])
+                return pd.DataFrame(data, columns=["Home", "Away", "Mercado", "Odd"])
+        except Exception as e:
+            return pd.DataFrame(columns=["Home", "Away", "Mercado", "Odd"])
+    return pd.DataFrame(columns=["Home", "Away", "Mercado", "Odd"])
 
 # Sidebar - Gestão de Banca
 st.sidebar.header("💰 GESTÃO DE BANCA")
