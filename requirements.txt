@@ -12,3 +12,5 @@ youtube-transcript-api
 feedparser
 plotly
 altair<5
+tabulate
+humanize
