@@ -1,4 +1,4 @@
-python-telegram-bot
+python-telegram-bot>=20.0
 requests
 pandas
 numpy
@@ -12,8 +12,5 @@ lxml
 streamlit
 youtube-transcript-api
 feedparser
-tlib
 plotly
-openai
-apscheduler
-pytz
+plotly-express
