@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Config & Keys
+.env
+config/settings.py
+mcp_config.json
+
+# Data & OS
+data/*.json
+!data/signals_history.json
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
