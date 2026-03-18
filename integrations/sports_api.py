@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
-from config.settings import (
+from app_config.settings import (
     CLEARSPORTS_API_KEY, THE_ODDS_API_KEY, 
     CLEARSPORTS_BASE_URL, THE_ODDS_API_BASE_URL
 )

@@ -8,7 +8,13 @@ from datetime import datetime
 import logging
 
 # Adicionar raiz do projeto ao path para importar módulos
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_path not in sys.path:
+    sys.path.insert(0, root_path)
+
+# Debug de ambiente para logs do Streamlit Cloud
+print(f"DEBUG: sys.path[0] = {sys.path[0]}")
+print(f"DEBUG: root_path content = {os.listdir(root_path)}")
 
 from agents.betting_analyst import BettingAnalyst
 from core.auto_trader import AutoTrader

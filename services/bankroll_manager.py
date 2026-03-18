@@ -1,4 +1,4 @@
-from config.settings import DEFAULT_BANKROLL, STAKE_STRATEGY, DEFAULT_STAKE_PERCENT
+from app_config.settings import DEFAULT_BANKROLL, STAKE_STRATEGY, DEFAULT_STAKE_PERCENT
 
 class BankrollManager:
     def __init__(self, current_bankroll=DEFAULT_BANKROLL):

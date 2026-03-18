@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from config.settings import DB_PATH
+from app_config.settings import DB_PATH
 import plotly.express as px
 
 def main():

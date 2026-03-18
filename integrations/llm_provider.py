@@ -1,5 +1,5 @@
 from openai import OpenAI
-from config.settings import OPENROUTER_API_KEY
+from app_config.settings import OPENROUTER_API_KEY
 
 class LLMProvider:
     def __init__(self):

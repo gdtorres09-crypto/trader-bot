@@ -1,4 +1,4 @@
-from config.settings import DEFAULT_STAKE_PERCENT
+from app_config.settings import DEFAULT_STAKE_PERCENT
 
 class BankrollOptimizer:
     """

@@ -2,7 +2,7 @@ import logging
 import asyncio
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from config.settings import TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
+from app_config.settings import TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
 from integrations.llm_provider import LLMProvider
 import os
 

@@ -1,4 +1,4 @@
-from config.settings import MIN_VALUE_BET_THRESHOLD
+from app_config.settings import MIN_VALUE_BET_THRESHOLD
 
 class ValueBetDetector:
     def __init__(self):
