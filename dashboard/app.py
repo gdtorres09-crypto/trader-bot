@@ -186,6 +186,9 @@ with tab1:
         st.subheader("📜 HISTÓRICO ANTERIOR")
 
     if not df_history.empty:
+        st.dataframe(df_history.copy().sort_values(by="timestamp", ascending=False).head(10), use_container_width=True)
+    else:
+        st.info("Nenhum sinal detectado ainda. Inicie a varredura.")
 
     if run_scan:
         has_status = hasattr(st, "status")
