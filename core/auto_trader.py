@@ -137,6 +137,9 @@ class AutoTrader:
             log(f"💎 FIM: {len(signals)} NOVAS GEMS GERADAS!")
             self._save_history()
         else:
-            log("⚠️ FIM: Nenhuma gem nova encontrada nos parâmetros atuais.")
+            api_status = ""
+            if "LIMITE DE CRÉDITOS" in str(self.agent.api): # Simples check
+                api_status = "\n\n⚠️ **AVISO: API de Odds excedida.** Mostrando apenas insights táticos de canais Expert."
+            log(f"⚠️ FIM: Nenhuma gem nova encontrada nos parâmetros atuais.{api_status}")
             
         return signals
