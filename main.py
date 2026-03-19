@@ -79,7 +79,7 @@ def main():
             for vid in new_vids:
                 print(f"Processando vídeo automático: {vid['title']}")
                 # Injeta como se o usuário tivesse enviado o link
-                agent.elite.inject_knowledge(bot.user_id, vid['url'])
+                agent.elite.inject_knowledge(bot.user_id, vid['link'])
                 # A próxima análise do ciclo de trading já terá esse conhecimento contextuado.
 
         scheduler.add_job(automatic_task, 'interval', minutes=10)

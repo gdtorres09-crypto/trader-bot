@@ -63,15 +63,40 @@ class AutoTrader:
         return round(final_stake, 2)
 
     def format_signal(self, bet: Dict) -> str:
-        """Formata o sinal no padrão profissional solicitado."""
-        ev = bet.get('ev', 0.0)
-        prob = bet.get('probability', 0.0)
-        stake = bet.get('stake', 0.0)
+        # 1. Identificar se é um sinal de CONSENSO ou EXPERT (YouTube)
+        is_expert_only = bet.get('is_expert_only', False)
+        market_upper = bet['market'].upper()
+        is_consensus = "CONSENSO" in market_upper
+        is_expert = "EXPERT" in market_upper or is_expert_only
+
+        if is_consensus:
+             return (
+                f"🏆 **[CONSENSO ELITE - YOUTUBE]** 🏆\n"
+                f"🏀⚽ **Evento:** {bet['home']}\n"
+                f"🔥 **RECOMENDAÇÃO:** {bet['market']}\n"
+                f"👥 **Especialistas em Acordo:** {bet.get('insights_count', 0)}\n\n"
+                f"📑 **RELATÓRIO DE CONSENSO:**\n{bet['reason']}\n\n"
+                f"💎 _Este sinal vem da convergência de múltiplos canais de elite._"
+            )
         
-        icon = "🔥" if ev > 0.15 else "📊"
+        if is_expert:
+            return (
+                f"👤 **[EXPERT INSIGHT (YouTube)]**\n"
+                f"🏀⚽ **Evento:** {bet['home']}\n"
+                f"📝 **Análise:** {bet['market']}\n"
+                f"📊 **Confiança:** {bet.get('confidence', 0.5)*100:.0f}%\n\n"
+                f"💡 **Detalhes Expert:**\n{bet['reason']}\n\n"
+                f"_(Fonte: Monitoramento de Canais Estratégicos)_"
+            )
+
+        # 2. Formatação Padrão (Market/Value)
+        prob = bet['probability']
+        odd = bet['odd']
+        ev = bet.get('ev', (prob * odd) - 1)
+        stake = bet.get('stake', 10.0)
         
         return (
-            f"{icon} **VALUE BET DETECTADA**\n\n"
+            f"💰 **[SINAL DE VALOR DETECTADO]**\n"
             f"🏀⚽ **Jogo:** {bet['home']} vs {bet['away']}\n"
             f"📊 **Mercado:** {bet['market']}\n"
             f"💰 **Odd:** {bet['odd']:.2f} (Betano)\n"
@@ -114,11 +139,14 @@ class AutoTrader:
             # 2. Calcular EV
             ev = self.calculate_ev(opt['probability'], opt['odd'])
             
-            # 3. Filtrar apenas EV Positivo (ou todos em modo debug, ou Informacionais)
-            is_informational = opt.get('odd') == 1.0
-            if ev > 0.02 or debug_mode or is_informational: 
-                prefix = "🧪 [DEBUG] " if (debug_mode and ev <= 0.02 and not is_informational) else ""
-                log(f"{prefix}✅ ANALISADO: {opt['home']} vs {opt['away']} (EV: {ev:+.2f} | Tipo: {'INFO' if is_informational else 'VALUE'})")
+            # 3. Filtrar apenas EV Positivo (ou todos em modo debug, ou Informacionais/Expert)
+            is_informational = opt.get('odd', 1.0) == 1.0
+            is_expert = opt.get('is_expert_only')
+            should_keep = ev > 0.02 or debug_mode or is_informational or is_expert
+            
+            if should_keep:
+                type_label = 'EXPERT' if is_expert else ('INFO' if is_informational else 'VALUE')
+                log(f"✅ ANALISADO: {opt['home']} vs {opt['away']} (EV: {ev:+.2f} | Tipo: {type_label})")
                 opt['ev'] = ev
                 opt['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
@@ -126,20 +154,20 @@ class AutoTrader:
                 opt['stake'] = self.calculate_stake(ev, opt.get('confidence', 0.5), current_bankroll)
                 
                 msg = self.format_signal(opt)
-                if debug_mode and ev <= 0.02 and not is_informational:
+                if debug_mode and ev <= 0.02 and not is_informational and not is_expert:
                     msg = "⚠️ **RELATÓRIO DEBUG: EV BAIXO**\n" + msg
                 
                 signals.append(msg)
-                if not debug_mode: # Não entupir histórico com logs de debug
+                # Sempre salvar Informacionais/Expert no histórico para o painel ver
+                if not debug_mode or is_informational or is_expert: 
                     self.sent_signals.append(opt)
+            else:
+                log(f"❌ DESCARTADO: {opt['home']} vs {opt['away']} (EV: {ev:+.2f} insuficiente)")
         
         if signals:
             log(f"💎 FIM: {len(signals)} NOVAS GEMS GERADAS!")
             self._save_history()
         else:
-            api_status = ""
-            if "LIMITE DE CRÉDITOS" in str(self.agent.api): # Simples check
-                api_status = "\n\n⚠️ **AVISO: API de Odds excedida.** Mostrando apenas insights táticos de canais Expert."
-            log(f"⚠️ FIM: Nenhuma gem nova encontrada nos parâmetros atuais.{api_status}")
+            log(f"⚠️ FIM: Nenhuma gem nova encontrada nos parâmetros atuais.")
             
         return signals

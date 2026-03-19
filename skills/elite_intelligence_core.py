@@ -509,20 +509,25 @@ class EliteIntelligenceCore:
 
         return final_response
 
-    def _analyze_youtube_content(self, transcript: str) -> str:
-        """Usa a IA para destilar o vídeo em conhecimento tático puro, sem copiar palpites."""
+    def _analyze_youtube_content(self, transcript: str, title: str = "") -> str:
+        """Usa a IA para extrair palpites específicos de especialistas."""
         prompt = (
-            "Você é um Analista de Futebol Sênior. Abaixo está a transcrição de um vídeo do YouTube sobre apostas.\n"
+            "Você é um Especialista em Prognósticos de Apostas. Abaixo está a transcrição (ou metadados) de um vídeo do YouTube com dicas de apostas.\n"
             "SUA MISSÃO:\n"
-            "1. Extraia APENAS informações táticas e de forma (ex: desfalques, estilo de jogo, pressão alta).\n"
-            "2. Identifique se o vídeo é de BAIXA QUALIDADE (cliquebait, promessas de lucro fácil, falta de dados).\n"
-            "3. Se for baixa qualidade, retorne apenas: 'VÍDEO DE BAIXA QUALIDADE IGNORADO'.\n"
-            "4. PROIBIDO: Não copie as 'Picks' ou palpites específicos do autor. Gere sua própria análise depois.\n"
-            "5. Retorne um resumo 'EXPERT' focado em fatos para apoiar minha inteligência.\n\n"
-            f"TRANSCRICAO:\n{transcript[:10000]}"
+            "1. Extraia TODOS os jogos mencionados e o PALPITE específico para cada um (ex: 'Lakers vence', 'Over 2.5 gols', 'Ambas Marcam').\n"
+            "2. Se o autor der uma 'Confiança' ou 'Stake' (1/10, etc), inclua.\n"
+            "3. Se for um #shorts ou vídeo curto, tente extrair o máximo possível de nomes de times e tendências.\n"
+            "4. Se o vídeo não contiver palpites reais (ex: apenas notícias ou entretenimento), retorne: 'VÍDEO SEM PALPITES'.\n"
+            "5. FORMATO DE SAÍDA (Obrigatório por jogo):\n"
+            "   JOGO: [Time A] vs [Time B]\n"
+            "   PALPITE: [O que apostar]\n"
+            "   RAZÃO: [Resumo de 1 frase do porquê]\n"
+            "   CONFIANÇA: [Se houver]\n\n"
+            f"TÍTULO: {title}\n"
+            f"CONTEÚDO:\n{transcript[:10000]}"
         )
-        # Usamos o modelo light para ser rápido e barato
-        return self.llm_lite.chat(prompt, model_type="light")
+        # Usamos o modelo pesado para maior precisão na extração de nomes
+        return self.llm_lite.chat(prompt, model_type="pro")
 
     def _extract_game(self, user_id: int, text: str):
         """
@@ -586,8 +591,8 @@ class EliteIntelligenceCore:
                     if res.get("type") == "youtube":
                         print(f"DEBUG CORE: Analisando tática do YouTube...")
                         tactical_summary = self._analyze_youtube_content(res["content"])
-                        if "BAIXA QUALIDADE" in tactical_summary:
-                            continue
+                        print(f"DEBUG CORE: LLM Analysis for YouTube video: {tactical_summary[:200]}...")
+                        # Relaxed 'BAIXA QUALIDADE' filter to ensure meta-analysis is always attempted
                         content_to_save = tactical_summary
                         
                     self.knowledge.add(user_id, source=res["title"], content=content_to_save)

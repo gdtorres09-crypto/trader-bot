@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import logging
 # import lxml
-from youtube_transcript_api import YouTubeTranscriptApi
+import youtube_transcript_api
 
 logger = logging.getLogger(__name__)
 
@@ -35,30 +35,44 @@ class KnowledgeProcessor:
                 return match.group(1)
         return None
 
-    def process_url(self, url: str) -> dict:
+    def process_url(self, url: str, title: str = None) -> dict:
         """Decide se processa como web ou youtube."""
         yt_id = self.extract_youtube_id(url)
         if yt_id:
-            return self.process_youtube(yt_id)
+            return self.process_youtube(yt_id, title=title)
         return self.process_web(url)
 
-    def process_youtube(self, video_id: str) -> dict:
-        """Extrai a transcrição de um vídeo do YouTube com fallback para metadados."""
+    def process_youtube(self, video_id: str, title: str = None) -> dict:
+        """Extrai a transcrição de um vídeo do YouTube com fallback reforçado para metadados."""
         try:
-            # Tenta Português (Brasil), Português (Geral), Inglês e Espanhol
+            text = ""
+            # TENTATIVA 1: Transcrição via API
             try:
-                transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt-BR', 'pt', 'en', 'es'])
-                text = " ".join([t['text'] for t in transcript_list])
+                # Método simplificado e robusto
+                from youtube_transcript_api import YouTubeTranscriptApi
+                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'pt-BR', 'en', 'es'])
+                text = " ".join([t['text'] for t in transcript])
             except Exception as e_transcript:
-                logger.warning(f"Transcrição falhou para {video_id}, tentando metadados: {e_transcript}")
-                # FALLBACK: Se falhar a transcrição, usamos o título (pode vir de fontes externas se necessário)
-                # No fluxo do Monitor, já temos o título. Aqui simulamos uma busca mínima.
-                text = f"Transcrição indisponível. Por favor, analise as tendências para o ID {video_id} baseando-se no contexto geral."
+                logger.warning(f"Monitor: Transcrição falhou para {video_id}, tentando Metadados: {e_transcript}")
+                
+                # TENTATIVA 2: Raspagem básica da página para pegar descrição (meta tag)
+                try:
+                    res = requests.get(f"https://www.youtube.com/watch?v={video_id}", headers=self.headers, timeout=5)
+                    if res.status_code == 200:
+                        soup = BeautifulSoup(res.text, 'html.parser')
+                        meta_desc = soup.find("meta", property="og:description")
+                        if meta_desc:
+                            text = f"[METADADOS]: {meta_desc.get('content', '')}"
+                except:
+                    pass
+                
+                if not text:
+                    text = f"Conteúdo indisponível para o ID {video_id}. Analise baseando-se no TÍTULO e tendências do canal."
             
             return {
                 "ok": True,
-                "title": f"YouTube (Video ID: {video_id})",
-                "content": f"[CONTEÚDO DO VÍDEO]: {text[:8000]}...", # Limite de contexto
+                "title": title or f"YouTube (ID: {video_id})",
+                "content": f"[CONTEÚDO]: {text[:8000]}",
                 "type": "youtube"
             }
         except Exception as e:

@@ -274,19 +274,34 @@ class BettingAnalyst:
         new_videos = self.yt_monitor.check_for_new_videos(sport_filter, target_date)
         log(f"✅ {len(new_videos)} novos vídeos detectados nos últimos feeds.")
         
-        tactical_insights = []
+        all_expert_picks = []
         for v in new_videos:
-            res = self.kp.process_url(v['link'])
-            if res.get('ok'):
-                # Extrair tática usando a IA Elite
-                tactical_res = self.elite._analyze_youtube_content(res['content'])
-                if "VÍDEO DE BAIXA QUALIDADE" not in tactical_res:
-                    tactical_insights.append({
+            res = self.kp.process_url(v['link'], title=v['title'])
+            content = res.get('content', '') if res.get('ok') else f"Título: {v['title']}\n{v['channel']}"
+            
+            # Extrair palpites usando a IA Elite (Nova Fase Consensus)
+            raw_picks = self.elite._analyze_youtube_content(content, title=v['title'])
+            
+            if "VÍDEO SEM PALPITES" not in raw_picks.upper():
+                log(f"✅ Palpites extraídos de {v['channel']}: {v['title'][:30]}...")
+                # Parser simples para extrair os blocos da IA
+                import re
+                blocks = re.split(r'JOGO:', raw_picks)
+                for block in blocks[1:]:
+                    lines = block.strip().split('\n')
+                    match_name = lines[0].strip() if lines else "Desconhecido"
+                    palpite = ""
+                    razao = ""
+                    for line in lines:
+                        if "PALPITE:" in line: palpite = line.replace("PALPITE:", "").strip()
+                        if "RAZÃO:" in line: razao = line.replace("RAZÃO:", "").strip()
+                    
+                    all_expert_picks.append({
                         "video_id": v['id'],
-                        "title": v['title'],
                         "channel": v['channel'],
-                        "match_name": v['title'],
-                        "analysis": tactical_res
+                        "match_name": match_name,
+                        "pick": palpite,
+                        "reason": razao
                     })
 
         log(f"⚽ Buscando odds reais no mercado ({sport_filter})...")
@@ -296,8 +311,8 @@ class BettingAnalyst:
             if target_date:
                 today = datetime.now().date()
                 diff = (target_date - today).days
-                for offset in [diff, diff + 1]:
-                     if offset < 0: continue
+                # Permitir busca para a data alvo exata, mesmo que seja ontem (diff = -1)
+                for offset in [diff]:
                      matches = self.api.get_upcoming_matches(sport=sport_filter.lower() if sport_filter != "TODOS" else "football", days_offset=offset)
                      if matches: all_matches.extend(matches)
             else:
@@ -312,69 +327,63 @@ class BettingAnalyst:
         
         opportunities = []
         
-        # MODO NORMAL: Cruzamento de API + YouTube
-        if all_matches:
-            for m in all_matches:
-                match_odds = m.get('odds', {})
-                if not match_odds: continue
+        # 3. Gerir CONSENSO entre especialistas
+        # 3. Gerir CONSENSO entre especialistas (se houver apenas picks, sem mercado ainda)
+        # Observação: Esta seção foi integrada no item "5. Cruzamento de Dados" para melhor fluxo lógico.
 
-                log(f"🧠 Analisando: **{m['home']} vs {m['away']}**")
+        # 5. Cruzamento de Dados (Oportunidades com base em mercado real)
+        matched_picks_ids = set()
+        for match in all_matches:
+            match_name = f"{match['home']} vs {match['away']}" # Usando chaves do get_upcoming_matches
+            
+            # Encontrar picks para este jogo (Fuzzy match)
+            from difflib import SequenceMatcher
+            match_picks = []
+            for p in all_expert_picks:
+                ratio = SequenceMatcher(None, match_name.lower(), p['match_name'].lower()).ratio()
+                if ratio > 0.7:
+                    match_picks.append(p)
+                    matched_picks_ids.add(id(p))
+            
+            if match_picks:
+                consensus_count = len(match_picks)
+                channels = [p['channel'] for p in match_picks]
                 
-                # Cross-reference YouTube Insights
-                match_insights = []
-                prob_adj = 0.0
-                for insight in tactical_insights:
-                    if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
-                        log(f"📎 Insight de especialista encontrado: {insight['channel']}")
-                        match_insights.append(insight)
-                        prob_adj += 0.05
-                
-                # Cálculo de Probabilidades Híbridas (Fase 19)
-                prob_base = 0.45 
-                final_prob = min(0.95, prob_base + prob_adj)
-                
-                # Detecção de Valor (Value Bet)
-                for market_key, odd in match_odds.items():
-                    if odd > 1.0:
-                        ev = (final_prob * odd) - 1
-                        if ev > 0.01 or sport_filter != "TODOS": # Filtro sensível
-                            reason = f"Análise de dados + {len(match_insights)} fontes de vídeo."
-                            if len(match_insights) > 1:
-                                reason = f"🤝 **CONCORDÂNCIA**: {len(match_insights)} canais concordam com esta tendência tática."
-                            
-                            opportunities.append({
-                                "id": m['id'],
-                                "sport": m.get('sport', 'FOOTBALL').upper(),
-                                "league": m['league'],
-                                "home": m['home'],
-                                "away": m['away'],
-                                "odd": odd,
-                                "probability": final_prob,
-                                "market": market_key,
-                                "reason": reason,
-                                "confidence": 0.6 + (len(match_insights) * 0.1),
-                                "insights_count": len(match_insights),
-                                "consensus_score": len(match_insights) / 3.0
-                            })
-        
-        # MODO ANALÍTICO: Fallback se a API falhar ou estiver vazia
-        if not opportunities and tactical_insights:
-            log(f"🧠 Gerando {len(tactical_insights)} GEMS de Conhecimento (Modo Analítico)...")
-            for insight in tactical_insights:
+                if consensus_count >= 2:
+                    opportunities.append({
+                        "id": f"consensus_{match['id']}",
+                        "match": match_name,
+                        "market": match_picks[0]['pick'],
+                        "type": "CONSENSO ELITE",
+                        "confidence": "ALTA" if consensus_count > 2 else "MÉDIA",
+                        "reason": f"{consensus_count} especialistas concordam: {', '.join(channels)}",
+                        "is_consensus": True,
+                        "extra": {"channels": channels, "picks": match_picks}
+                    })
+                else:
+                    opportunities.append({
+                        "id": f"expert_{match['id']}",
+                        "match": match_name,
+                        "market": match_picks[0]['pick'],
+                        "type": "EXPERT INSIGHT",
+                        "confidence": "MÉDIA",
+                        "reason": f"Dica de {match_picks[0]['channel']}: {match_picks[0]['reason']}",
+                        "is_expert": True
+                    })
+
+        # 6. Fallback: Mostrar Experts mesmo sem dados de mercado (API LIMITE)
+        for p in all_expert_picks:
+            if id(p) not in matched_picks_ids:
                 opportunities.append({
-                    "id": f"insight_{insight['video_id']}",
-                    "sport": sport_filter,
-                    "league": "Expert Insight",
-                    "home": insight['match_name'].split('vs')[0].strip() if 'vs' in insight['match_name'] else insight['match_name'],
-                    "away": insight['match_name'].split('vs')[1].strip() if 'vs' in insight['match_name'] else "Especialista",
-                    "odd": 1.0, 
-                    "probability": 0.5,
-                    "market": "ANÁLISE TÁTICA",
-                    "reason": f"Sinal gerado via YouTube ({insight['channel']}): {insight['analysis'][:200]}...",
-                    "confidence": 0.7,
-                    "insights_count": 1,
-                    "consensus_score": 0.5
+                    "id": f"raw_expert_{p['video_id']}_{hash(p['match_name'])}",
+                    "match": p['match_name'],
+                    "market": p['pick'],
+                    "type": "EXPERT INSIDER",
+                    "confidence": "ALTA",
+                    "reason": f"Análise do Canal {p['channel']}: {p['reason']}",
+                    "is_expert": True,
+                    "is_consensus": False
                 })
 
-        log(f"📈 {len(opportunities)} oportunidades identificadas para análise final.")
+        log(f"📈 {len(opportunities)} oportunidades identificadas (Expert + Mercado).")
         return opportunities
