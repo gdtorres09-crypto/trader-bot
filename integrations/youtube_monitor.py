@@ -56,12 +56,11 @@ class YouTubeMonitor:
         Verifica os feeds RSS dos canais e retorna novos vídeos filtrados por esporte e data.
         """
         new_videos = []
-        seen = self._get_seen_videos()
         channels = self._get_channels()
 
         for ch in channels:
             # Filtro de Esporte
-            ch_type = ch.get('type', 'football').upper()
+            ch_type = ch.get('type', 'futebol').upper()
             if sport_type != "TODOS" and ch_type != sport_type:
                 continue
 
@@ -70,39 +69,47 @@ class YouTubeMonitor:
 
             try:
                 feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:5]: # Checar um pouco mais para garantir que a data bata
-                    # Verificar Data se fornecida
-                    if target_date:
-                        from datetime import datetime, timedelta
-                        import time
-                        # Converte struct_time para date
-                        pub_time = entry.get('published_parsed')
-                        if pub_time:
-                            pub_date = datetime.fromtimestamp(time.mktime(pub_time)).date()
-                            # Permitir vídeos de até 3 dias ANTES do alvo (previsões de rodada)
-                            start_window = target_date - timedelta(days=3)
-                            if pub_date < start_window or pub_date > target_date:
-                                logger.info(f"Monitor: Pulando vídeo fora da janela ({pub_date})")
-                                continue 
+                if not feed.entries:
+                    logger.warning(f"Monitor: Feed vazio ou erro de conexo para {ch['name']}")
+                    continue
 
+                for entry in feed.entries[:10]: # Pegar os últimos 10 de cada canal
                     video_id = entry.get('yt_videoid')
                     if not video_id:
                          video_id = entry.link.split("v=")[-1] if "v=" in entry.link else entry.id
                     
-                    # Para o modo "Análise de Data Centralizada", ignoramos o histórico "seen" 
-                    # para permitir re-varredura do dia se o usuário quiser. 
-                    # Mas para o monitor automático, mantemos.
-                    # Aqui, como é gatilho manual do dashboard, vamos focar na data.
+                    # Log de inspeção
+                    logger.info(f"Monitor: Analisando {ch['name']} -> {entry.title}")
                     
-                    logger.info(f"Monitor: Analisando vídeo em {ch['name']} -> {entry.title}")
-                    new_videos.append({
-                        "id": video_id,
-                        "title": entry.title,
-                        "link": entry.link,
-                        "channel": ch['name'],
-                        "sport": ch_type
-                    })
+                    # Filtro de Data (Opcional com Fallback)
+                    is_date_ok = True
+                    if target_date:
+                        from datetime import datetime, timedelta
+                        import time
+                        pub_time = entry.get('published_parsed')
+                        if pub_time:
+                            pub_date = datetime.fromtimestamp(time.mktime(pub_time)).date()
+                            # Janela de 7 dias (Previsões e Pós-jogo)
+                            start_window = target_date - timedelta(days=5)
+                            end_window = target_date + timedelta(days=2)
+                            if not (start_window <= pub_date <= end_window):
+                                is_date_ok = False
+                                # logger.info(f"Monitor: Pulando {pub_date} (fora da janela de {target_date})")
+
+                    if is_date_ok:
+                        new_videos.append({
+                            "id": video_id,
+                            "title": entry.title,
+                            "link": entry.link,
+                            "channel": ch['name'],
+                            "sport": ch_type
+                        })
             except Exception as e:
                 logger.error(f"Erro no monitor YouTube ({ch.get('name')}): {e}")
+
+        # FALLBACK: Se não encontrou NADA na data, libera as últimas 5 de cada canal geral do esporte
+        if not new_videos and target_date:
+            logger.warning(f"⚠️ NENHUM VÍDEO PARA {target_date}. Liberando feed geral de {sport_type}...")
+            return self.check_for_new_videos(sport_type=sport_type, target_date=None)
 
         return new_videos
