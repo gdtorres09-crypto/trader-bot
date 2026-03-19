@@ -92,8 +92,8 @@ class AutoTrader:
 
         log(f"🚀 Iniciando ciclo: Sport={sport_filter}, Data={target_date} (Debug={debug_mode})")
         
-        # 1. Buscar jogos e odds com filtros
-        opportunities = self.agent.get_all_opportunities(sport_filter, target_date)
+        # 1. Buscar jogos e odds com filtros (passando log_callback)
+        opportunities = self.agent.get_all_opportunities(sport_filter, target_date, log_callback=log)
         
         log(f"🔎 Encontradas {len(opportunities)} oportunidades brutas.")
         

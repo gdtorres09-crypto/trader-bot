@@ -73,14 +73,17 @@ class YouTubeMonitor:
                 for entry in feed.entries[:5]: # Checar um pouco mais para garantir que a data bata
                     # Verificar Data se fornecida
                     if target_date:
-                        from datetime import datetime
+                        from datetime import datetime, timedelta
                         import time
                         # Converte struct_time para date
                         pub_time = entry.get('published_parsed')
                         if pub_time:
                             pub_date = datetime.fromtimestamp(time.mktime(pub_time)).date()
-                            if pub_date < target_date:
-                                continue # Vídeo antigo
+                            # Permitir vídeos de até 3 dias ANTES do alvo (previsões de rodada)
+                            start_window = target_date - timedelta(days=3)
+                            if pub_date < start_window or pub_date > target_date:
+                                logger.info(f"Monitor: Pulando vídeo fora da janela ({pub_date})")
+                                continue 
 
                     video_id = entry.get('yt_videoid')
                     if not video_id:

@@ -2,6 +2,9 @@ from integrations.sports_api import SportsAPI
 from integrations.database import Database
 from services.probability_model import ProbabilityModel
 from services.report_generator import ReportGenerator
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Novas Skills
 from skills.value_bet_detector import ValueBetDetector
@@ -250,13 +253,20 @@ class BettingAnalyst:
         
         return research_context if research_context else "Nenhuma informação adicional encontrada na web."
 
-    def get_all_opportunities(self, sport_filter: str = "TODOS", target_date = None) -> list:
+    def get_all_opportunities(self, sport_filter: str = "TODOS", target_date = None, log_callback = None) -> list:
         """
         Busca todos os jogos disponíveis e extrai probabilidades 
         para alimentar o AutoTrader e o Painel Premium.
         """
+        def log(msg):
+            if log_callback: log_callback(msg)
+            logger.info(msg)
+
+        log("🔍 **Iniciando coleta de dados profunda...**")
         # 1. INTEGRAR YOUTUBE (MODO REAL) com filtros
+        log(f"📺 Buscando novos vídeos ({sport_filter})...")
         new_videos = self.yt_monitor.check_for_new_videos(sport_filter, target_date)
+        log(f"✅ {len(new_videos)} vídeos relevantes encontrados na janela de data.")
         tactical_insights = []
         for v in new_videos:
             res = self.kp.process_url(v['link'])
@@ -271,22 +281,37 @@ class BettingAnalyst:
                         "analysis": tactical_res
                     })
 
-        # 2. Buscar jogos (Hoje e Amanhã)
+        log(f"⚽ Buscando odds reais no mercado ({sport_filter})...")
         all_matches = []
-        for offset in [0, 1]:
-            matches = self.api.get_upcoming_matches(days_offset=offset)
-            if matches: all_matches.extend(matches)
+        # ... logic for dynamic date ... (already applied but I'll add logs here)
+        if target_date:
+            from datetime import datetime
+            today = datetime.now().date()
+            diff = (target_date - today).days
+            for offset in [diff, diff + 1]:
+                 if offset < 0: continue
+                 matches = self.api.get_upcoming_matches(days_offset=offset)
+                 if matches: all_matches.extend(matches)
+        else:
+            for offset in [0, 1]:
+                matches = self.api.get_upcoming_matches(days_offset=offset)
+                if matches: all_matches.extend(matches)
         
+        log(f"📈 {len(all_matches)} jogos identificados na API para análise.")
+
         opportunities = []
         for m in all_matches:
             match_odds = m.get('odds', {})
             if not match_odds: continue
 
+            log(f"🧠 Analisando: **{m['home']} vs {m['away']}**")
+            
             # Cross-reference YouTube Insights
             match_insight = None
             prob_adj = 0.0
             for insight in tactical_insights:
                 if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
+                    log(f"📎 Insight encontrado no canal: {insight['channel']}")
                     match_insight = insight
                     prob_adj = 0.05
                     break
@@ -299,6 +324,7 @@ class BettingAnalyst:
             # Se encontrou indício de valor ou tem vídeo, faz a pesquisa web profunda
             web_context = ""
             if match_insight:
+                 log(f"🌐 Realizando Deep Web Research para {m['home']}...")
                  web_context = self.perform_deep_web_research(m['home'], m['away'])
 
             for market_label, odd in match_odds.items():
