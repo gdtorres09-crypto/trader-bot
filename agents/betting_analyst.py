@@ -316,15 +316,30 @@ class BettingAnalyst:
                     prob_adj = 0.05
                     break
 
-            # 3. FILTRO DE ESPORTE E PESQUISA WEB profunda
-            g_sport = "FUTEBOL" 
+            # 3. DETECÇÃO DE ESPORTE E CONCORDÂNCIA MULTI-CANAL
+            g_sport = "NBA" if sport_filter == "NBA" else "FUTEBOL"
+            # Se o esporte filtrado for diferente do esporte do jogo, pula
             if sport_filter != "TODOS" and g_sport != sport_filter:
                 continue
 
+            # Agregação de todos os Insights (Concordância)
+            match_insights = []
+            for insight in tactical_insights:
+                # Se ambos os times ou um deles for mencionado
+                if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
+                    match_insights.append(insight)
+            
+            prob_adj = 0.0
+            concordance_report = ""
+            if match_insights:
+                log(f"🔗 **CONCORDÂNCIA**: {len(match_insights)} canais analisaram este jogo!")
+                prob_adj = len(match_insights) * 0.03 # 3% de bônus por cada canal concordando
+                concordance_report = "\n".join([f"- {i['channel']}: {i['analysis'][:100]}..." for i in match_insights])
+
             # Se encontrou indício de valor ou tem vídeo, faz a pesquisa web profunda
             web_context = ""
-            if match_insight:
-                 log(f"🌐 Realizando Deep Web Research para {m['home']}...")
+            if match_insights:
+                 log(f"🌐 Realizando Deep Web Research para consolidar análise de {m['home']}...")
                  web_context = self.perform_deep_web_research(m['home'], m['away'])
 
             for market_label, odd in match_odds.items():
