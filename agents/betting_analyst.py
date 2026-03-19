@@ -317,12 +317,14 @@ class BettingAnalyst:
                     break
 
             # 3. DETECÇÃO DE ESPORTE E CONCORDÂNCIA MULTI-CANAL
-            g_sport = "NBA" if sport_filter == "NBA" else "FUTEBOL"
-            # Se o esporte filtrado for diferente do esporte do jogo, pula
+            g_sport = m.get('sport', 'FUTEBOL').upper()
+            
+            # Log de depuração para o usuário ver o que o robô está filtrando
             if sport_filter != "TODOS" and g_sport != sport_filter:
+                # log(f"⏩ Pulando {m['home']} (Esporte {g_sport} != {sport_filter})")
                 continue
 
-            # Agregação de todos os Insights (Concordância)
+            # Agregação de todos os Insights (Concordância / Acordo entre Canais)
             match_insights = []
             for insight in tactical_insights:
                 # Se ambos os times ou um deles for mencionado
@@ -330,16 +332,16 @@ class BettingAnalyst:
                     match_insights.append(insight)
             
             prob_adj = 0.0
-            concordance_report = ""
+            concordance_msg = ""
             if match_insights:
                 log(f"🔗 **CONCORDÂNCIA**: {len(match_insights)} canais analisaram este jogo!")
                 prob_adj = len(match_insights) * 0.03 # 3% de bônus por cada canal concordando
-                concordance_report = "\n".join([f"- {i['channel']}: {i['analysis'][:100]}..." for i in match_insights])
+                concordance_msg = f" (Acordo entre {len(match_insights)} canais especialistas)"
 
             # Se encontrou indício de valor ou tem vídeo, faz a pesquisa web profunda
             web_context = ""
             if match_insights:
-                 log(f"🌐 Realizando Deep Web Research para consolidar análise de {m['home']}...")
+                 log(f"🌐 Deep Search: Consolidando info para {m['home']} vs {m['away']}...")
                  web_context = self.perform_deep_web_research(m['home'], m['away'])
 
             for market_label, odd in match_odds.items():
@@ -350,6 +352,24 @@ class BettingAnalyst:
                 
                 # Lógica de Mercado
                 prob = pred.get('prob', 0.5) + prob_adj
+                market_name = market_label
+                
+                # Determinar probabilidade específica do mercado
+                if "h2h" in market_label:
+                    if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj
+                    elif m['away'] in market_label: prob = (pred['probs']['away'] / 100.0) + prob_adj
+                    else: prob = (pred['probs']['draw'] / 100.0) + prob_adj
+                
+                opportunities.append({
+                    "home": m['home'],
+                    "away": m['away'],
+                    "market": market_name,
+                    "odd": odd,
+                    "probability": prob,
+                    "confidence": (pred['confidence'] / 100.0) + (len(match_insights) * 0.1),
+                    "reason": f"Análise Híbrida: {pred['prediction']} com {pred['confidence']}% de confiança.{concordance_msg}",
+                    "sport": g_sport
+                })
                 market_name = market_label
                 if "h2h" in market_label:
                     if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj
