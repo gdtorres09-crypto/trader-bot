@@ -82,28 +82,45 @@ bankroll = st.sidebar.number_input("Banca Atual (R$)", min_value=0.0, value=1000
 
 # Lógica do Bot Real (Sincronizada)
 if run_scan:
-    with st.status("🔍 Escaneando Mercados e YouTube...", expanded=True) as status:
-        try:
-            st.write("Conectando às APIs (The Odds API)...")
-            analyst = BettingAnalyst()
-            trader = AutoTrader(analyst)
-            
-            st.write("Analisando canais do YouTube configurados...")
-            # O run_analysis_cycle agora faz o trabalho real
-            import asyncio
-            signals = asyncio.run(trader.run_analysis_cycle())
-            
-            if signals:
-                st.success(f"✅ {len(signals)} novas oportunidades encontradas!")
-                for s in signals:
-                    st.toast(s, icon="🔥")
-            else:
-                st.info("Nenhuma oportunidade de valor encontrada neste ciclo.")
-            
-            status.update(label="Escaneamento concluído!", state="complete", expanded=False)
-        except Exception as e:
-            st.error(f"Erro no ciclo: {e}")
-            status.update(label="Falha no escaneamento", state="error")
+    # Fallback para st.status (disponível apenas em Streamlit >= 1.24.0)
+    has_status = hasattr(st, "status")
+    
+    if has_status:
+        with st.status("🔍 Escaneando Mercados e YouTube...", expanded=True) as status:
+            try:
+                st.write("Conectando às APIs (The Odds API)...")
+                analyst = BettingAnalyst()
+                trader = AutoTrader(analyst)
+                
+                st.write("Analisando canais do YouTube configurados...")
+                import asyncio
+                signals = asyncio.run(trader.run_analysis_cycle())
+                
+                if signals:
+                    st.success(f"✅ {len(signals)} novas oportunidades encontradas!")
+                    for s in signals:
+                        st.toast(s, icon="🔥")
+                else:
+                    st.info("Nenhuma oportunidade de valor encontrada neste ciclo.")
+                
+                status.update(label="Escaneamento concluído!", state="complete", expanded=False)
+            except Exception as e:
+                st.error(f"Erro no ciclo: {e}")
+                status.update(label="Falha no escaneamento", state="error")
+    else:
+        # Fallback para versões antigas
+        with st.spinner("🔍 Escaneando Mercados e YouTube..."):
+            try:
+                analyst = BettingAnalyst()
+                trader = AutoTrader(analyst)
+                import asyncio
+                signals = asyncio.run(trader.run_analysis_cycle())
+                if signals:
+                    st.success(f"✅ {len(signals)} novas oportunidades!")
+                else:
+                    st.info("Nenhuma oportunidade encontrada.")
+            except Exception as e:
+                st.error(f"Erro no ciclo: {e}")
 
 # Layout Principal - Três Colunas
 df_history = load_history()
