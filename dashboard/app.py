@@ -40,7 +40,7 @@ st.markdown("""
         border: 1px solid #30333d;
     }
 </style>
-""", unsafe_allow_name=True)
+""", unsafe_allow_html=True)
 
 # Título
 st.title("🤖 SPORTS TRADER AI - PAINEL REAL-TIME")
