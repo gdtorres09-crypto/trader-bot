@@ -354,43 +354,36 @@ class BettingAnalyst:
                 prob = pred.get('prob', 0.5) + prob_adj
                 market_name = market_label
                 
-                # Determinar probabilidade específica do mercado
+                # Tradução/Normalização de Mercado
                 if "h2h" in market_label:
+                    market_name = "Vencedor (ML)"
                     if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj
                     elif m['away'] in market_label: prob = (pred['probs']['away'] / 100.0) + prob_adj
                     else: prob = (pred['probs']['draw'] / 100.0) + prob_adj
-                
+                elif "totals" in market_label:
+                    market_name = "Over/Under"
+                    prob = 0.55 + prob_adj
+
+                # Cálculo de Consenso e Confiança
+                confidence = (pred['confidence'] / 100.0) + (len(match_insights) * 0.1)
+                consensus_score = (prob + (pred['confidence']/100.0)) / 2.0
+
+                # Formatação da Razão (Transparência Total)
+                canal_list = ", ".join([i['channel'] for i in match_insights])
+                concord_text = f" [CONCORDÂNCIA: {canal_list}]" if match_insights else ""
+                reason_full = f"Consenso Híbrido: {pred['prediction']} ({pred['confidence']}% confiança IA){concord_text}."
+
                 opportunities.append({
                     "home": m['home'],
                     "away": m['away'],
                     "market": market_name,
                     "odd": odd,
-                    "probability": prob,
-                    "confidence": (pred['confidence'] / 100.0) + (len(match_insights) * 0.1),
-                    "reason": f"Análise Híbrida: {pred['prediction']} com {pred['confidence']}% de confiança.{concordance_msg}",
-                    "sport": g_sport
-                })
-                market_name = market_label
-                if "h2h" in market_label:
-                    if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj
-                    elif m['away'] in market_label: prob = (pred['probs']['away'] / 100.0) + prob_adj
-                    market_name = "Vencedor (ML)"
-                elif "totals" in market_label:
-                    prob = 0.55 + prob_adj
-                    market_name = "Gols Over/Under"
-                
-                # Consenso: Média entre Probability (ML) e Confiança (Stats) + Insight
-                consensus = (prob + (pred['confidence']/100.0)) / 2.0
-
-                opportunities.append({
-                    'home': m['home'],
-                    'away': m['away'],
-                    'market': market_name,
-                    'odd': odd,
-                    'probability': min(prob, 0.95),
-                    'consensus_score': min(consensus, 0.95),
-                    'insight': match_insight['analysis'] if match_insight else "Dados Estatísticos + Algoritmo ML",
-                    'reason': f"Consenso Híbrido ({'YouTube + ML' if match_insight else 'ML Pure Data'})"
+                    "probability": min(prob, 0.98),
+                    "confidence": min(confidence, 0.98),
+                    "consensus_score": min(consensus_score, 0.98),
+                    "reason": reason_full,
+                    "sport": g_sport,
+                    "insights_count": len(match_insights)
                 })
             
         return opportunities
