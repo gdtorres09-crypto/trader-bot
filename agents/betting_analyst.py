@@ -210,6 +210,33 @@ class BettingAnalyst:
         ]
         return self.reports.generate_history_report(history)
 
+    def generate_studio_content(self, content_type: str, game_data: dict = None) -> str:
+        """
+        Gera conteúdo específico para o 'Estúdio IA' (NotebookLM Style).
+        """
+        if not game_data:
+            return "Selecione um jogo no Painel de Controle para gerar conteúdo especializado."
+        
+        if content_type == "audio":
+            return f"📻 **PODCAST IA: ANALYTICS HOJE**\n\n'Bem-vindos ao resumo diário. Hoje focamos em {game_data['home']} vs {game_data['away']}. Nossa IA detectou um padrão tático interessante...'"
+        
+        if content_type == "mindmap":
+            return f"""
+            graph TD
+            Match["{game_data['home']} vs {game_data['away']}"]
+            Match --> Market["Mercado: {game_data['market']}"]
+            Match --> Tactics["Tactical Insight: {game_data.get('insight', 'Stats-based')}"]
+            Tactics --> Value["EV+: {game_data.get('ev', 0.1):+.2f}"]
+            """
+        
+        if content_type == "flashcards":
+            return [
+                {"Q": f"Qual o favoritismo em {game_data['home']}?", "A": f"Probabilidade de {game_data.get('probability', 0.5)*100:.1f}%"},
+                {"Q": "Fator Tático Chave?", "A": game_data.get('reason', 'Equilíbrio estatístico')}
+            ]
+        
+        return "Tipo de conteúdo não suportado."
+
     def get_all_opportunities(self) -> list:
         """
         Busca todos os jogos disponíveis e extrai probabilidades 

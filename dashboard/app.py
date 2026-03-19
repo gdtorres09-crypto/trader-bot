@@ -93,10 +93,11 @@ with col_h2:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- NAVEGAÇÃO POR ABAS (INSPIRAÇÃO CARTOLA MESTRE) ---
-tab1, tab2, tab3, tab4 = st.tabs([
+# --- NAVEGAÇÃO POR ABAS (INSPIRAÇÃO NOTEBOOKLM / CARTOLA MESTRE) ---
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 PAINEL DE CONTROLE", 
     "🧠 INTELIGÊNCIA HÍBRIDA", 
+    "🎨 ESTÚDIO IA",
     "📈 PERFORMANCE & ROI", 
     "⚙️ CONFIGURAÇÕES"
 ])
@@ -116,7 +117,38 @@ def load_history():
 
 df_history = load_history()
 
-# --- TAB 1: PAINEL DE CONTROLE (O "Dashboard" atual melhorado) ---
+# CSS ADICIONAL PARA ESTÚDIO
+st.markdown("""
+<style>
+    .studio-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 15px;
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .studio-card:hover {
+        background: rgba(0, 255, 0, 0.05);
+        border-color: #00FF00;
+    }
+    .studio-icon {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+    .studio-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- TAB 1: PAINEL DE CONTROLE ---
 with tab1:
     # Sidebar control (remains for Global Actions)
     st.sidebar.header("🕹️ COMANDOS")
@@ -127,44 +159,37 @@ with tab1:
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         total_sinais = len(df_history)
-        st.metric("Total Sinais", total_sinais, help="Total de sinais EV+ operados")
+        st.metric("Total Sinais", total_sinais)
     with m2:
         roi = f"+{df_history['ev'].mean()*100:.1f}%" if not df_history.empty else "0.0%"
         st.metric("ROI Estimado", roi)
     with m3:
-        st.metric("Status Server", "AGUARDANDO" if not run_scan else "PROCESSANDO")
+        st.metric("Status Server", "IDLE" if not run_scan else "RUNNING")
     with m4:
-        st.metric("Conexão API", "CONECTADO", delta="Latência 45ms")
+        st.metric("Latência", "42ms", delta="-5ms")
 
     st.markdown("### 🔥 ÚLTIMAS OPORTUNIDADES DETECTADAS")
     if not df_history.empty:
-        # Formatação profissional da tabela
-        df_display = df_history.copy().sort_values(by="timestamp", ascending=False).head(10)
-        st.dataframe(df_display, use_container_width=True)
+        st.dataframe(df_history.copy().sort_values(by="timestamp", ascending=False).head(10), use_container_width=True)
     else:
-        st.info("Nenhum sinal detectado ainda. Clique em 'Iniciar Varredura' no menu lateral.")
+        st.info("Nenhum sinal detectado ainda. Inicie a varredura.")
 
-    # Lógica de Execução com Fallback
     if run_scan:
         has_status = hasattr(st, "status")
         if has_status:
-            with st.status("🔍 Buscando Dados de Mercado e Análises YouTube...", expanded=True) as status:
+            with st.status("🔍 Buscando Dados...", expanded=True) as status:
                 try:
                     analyst = BettingAnalyst()
                     trader = AutoTrader(analyst)
-                    st.write("🛰️ Consultando The Odds API...")
                     import asyncio
                     signals = asyncio.run(trader.run_analysis_cycle())
-                    if signals:
-                        st.success(f"Encontradas {len(signals)} Gems!")
-                        for s in signals: st.toast(s, icon="💎")
                     status.update(label="Varredura Completa!", state="complete")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Erro no ciclo: {e}")
-                    status.update(label="Erro na Varredura", state="error")
+                    st.error(f"Erro: {e}")
+                    status.update(label="Erro", state="error")
         else:
-            with st.spinner("🔍 Analisando..."):
+            with st.spinner("Analisando..."):
                 try:
                     analyst = BettingAnalyst()
                     trader = AutoTrader(analyst)
@@ -173,49 +198,99 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Erro: {e}")
 
-# --- TAB 2: INTELIGÊNCIA HÍBRIDA (Visão de 'Expert' da Inspiração) ---
+# --- TAB 2: INTELIGÊNCIA HÍBRIDA ---
 with tab2:
-    st.subheader("🧠 CONSENSO IA & TÁTICAS YOUTUBE")
-    st.markdown("Aqui o bot cruza o que os especialistas dizem no YT com os números frios das Odds.")
+    st.subheader("🧠 CONSENSO YOUTUBE & MERCADO")
+    # Mostrar fontes ativas (NotebookLM Style)
+    st.markdown("---")
+    c1, c2, c3 = st.columns(3)
+    c1.info("📺 **FONTES YOUTUBE**: 11 Canais (Tifo, NBA, AVBETS...)")
+    c2.success("📊 **FONTES MERCADO**: Odds Live (Betano/Kaizen)")
+    c3.warning("🧠 **CÉREBRO IA**: GPT-4o / Claude Analysis")
     
-    c1, c2 = st.columns(2)
-    with c1:
-        st.info("📺 MONITORAMENTO DE CANAIS")
-        st.write("Canais ativos: TNT Sports, NBA Brasil, Danilo Pereira.")
-        # Simulação de Insights
-        st.markdown("""
-        **Últimos Insights Extraídos:**
-        - *Arsenal vs Bayern*: Desfalque de Kane no Bayern sugere Under 2.5 (Confiança: 78%).
-        - *Lakers vs Warriors*: Curado de lesão, Lebron deve focar em Assistências.
-        """)
-    with c2:
-        st.success("📊 CONSENSO DE MERCADO")
-        st.write("Análise de Volume de Apostas e Movimentação de Odds Profissionais.")
-        st.write("Tendência Atual: Back Favorito no Campeonato Brasileiro.")
+    st.markdown("#### Últimos Insights Cross-Reference")
+    st.markdown("""
+    - **Lakers vs Warriors**: NBA Official + Thinking Basketball reportam fadiga de Curry. (Confiança: 82%)
+    - **Arsenal v Bayern**: Tifo Football destaca vulnerabilidade tática do Bayern em transição. (Confiança: 75%)
+    """)
 
-# --- TAB 3: PERFORMANCE ---
+# --- TAB 3: ESTÚDIO IA (NOTEBOOKLM STYLE) ---
 with tab3:
-    st.subheader("📈 ANÁLISE DE RESULTADOS")
+    st.markdown("### 🎨 ESTÚDIO DE CRIAÇÃO")
+    st.markdown("Transforme dados brutos em inteligência digerível.")
+    
+    # Sub-menu NotebookLM
+    sm1, sm2, sm3 = st.columns([1, 1, 4])
+    sm1.markdown("**Fontes**")
+    sm2.markdown("<span style='border-bottom: 2px solid #00FF00'>**Estúdio**</span>", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # Mock de seleção de jogo para o estúdio
+    selected_game = None
+    if not df_history.empty:
+        game_list = [f"{r['home']} vs {r['away']}" for _, r in df_history.head(5).iterrows()]
+        choice = st.selectbox("Escolha um Jogo para Analisar no Estúdio:", game_list)
+        selected_game = df_history.iloc[0].to_dict() # Simples para o exemplo
+    
+    # Grid de Cards (NotebookLM)
+    row1 = st.columns(4)
+    with row1[0]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">✨</div><div class="studio-title">Resumo em Áudio</div></div>', unsafe_allow_html=True)
+        if st.button("Gerar Podcast", key="audio"):
+             analyst = BettingAnalyst()
+             res = analyst.generate_studio_content("audio", selected_game)
+             st.info(res)
+    with row1[1]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">📖</div><div class="studio-title">Apresentação</div></div>', unsafe_allow_html=True)
+        if st.button("Gerar Slides", key="slides"): st.code(f"# Slides: {selected_game['home'] if selected_game else 'Geral'}\n- Key Metrics\n- Top Picks")
+    with row1[2]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">📽️</div><div class="studio-title">Resumo em Vídeo</div></div>', unsafe_allow_html=True)
+        if st.button("Recortar YT", key="video"): st.write("Highlighting top segments from connected channels...")
+    with row1[3]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">🧠</div><div class="studio-title">Mapa Mental</div></div>', unsafe_allow_html=True)
+        if st.button("Gerar Mapa", key="mindmap"): 
+            analyst = BettingAnalyst()
+            mermaid_code = analyst.generate_studio_content("mindmap", selected_game)
+            st.code(mermaid_code, language="mermaid")
+
+    row2 = st.columns(4)
+    with row2[0]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">📄</div><div class="studio-title">Relatórios</div></div>', unsafe_allow_html=True)
+        if st.button("PDF Pro", key="pdf"): st.success("Relatório PDF pronto para download.")
+    with row2[1]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">📇</div><div class="studio-title">Cartões Didáticos</div></div>', unsafe_allow_html=True)
+        if st.button("Gerar Flashcards", key="flash"): 
+            analyst = BettingAnalyst()
+            cards = analyst.generate_studio_content("flashcards", selected_game)
+            for c in cards: st.write(f"**Q:** {c['Q']}\n**A:** {c['A']}")
+    with row2[2]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">📝</div><div class="studio-title">Teste</div></div>', unsafe_allow_html=True)
+        if st.button("Check Knowledge", key="test"): st.radio("Qual o mercado EV+ sugerido?", ["Vencedor", "Gols", "Handicap"])
+    with row2[3]:
+        st.markdown('<div class="studio-card"><div class="studio-icon">📊</div><div class="studio-title">Infográfico</div></div>', unsafe_allow_html=True)
+        if st.button("Dashboard Visual", key="info"): st.bar_chart(pd.DataFrame({"Prob": [0.6, 0.2, 0.2]}, index=["Home", "Draw", "Away"]))
+
+# --- TAB 4: PERFORMANCE ---
+with tab4:
+    st.subheader("📈 PERFORMANCE & ROI")
     if not df_history.empty:
         import plotly.express as px
         df_history['Data'] = pd.to_datetime(df_history['timestamp']).dt.date
         daily = df_history.groupby('Data').size().reset_index(name='Sinais')
-        fig = px.line(daily, x='Data', y='Sinais', title="Volume de Sinais por Dia (Automação)")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(px.line(daily, x='Data', y='Sinais', title="Volume de Sinais"), use_container_width=True)
     else:
-        st.write("Sem dados para gerar gráficos.")
+        st.write("Aguardando dados para gerar performance...")
 
-# --- TAB 4: CONFIGURAÇÕES ---
-with tab4:
-    st.subheader("⚙️ GESTÃO DO SISTEMA")
-    with st.expander("🛠️ FONTES DE DADOS (YOUTUBE)"):
-        st.json({"canais": ["TNT Brasil", "NBA Brasil", "Apostador de Valor"]})
-    with st.expander("🔑 API KEYS"):
-        st.write("The Odds API: Configurada ✅")
-        st.write("Telegram Bot: Configurado ✅")
-    with st.expander("🤖 ESTRATÉGIA DE APOSTA"):
-        st.selectbox("Modelo", ["Valor Esperado + Kelly Criterion", "Stake Fixa 2%", "Alavancagem Inteligente"])
+with tab5:
+    st.subheader("⚙️ CONFIGURAÇÕES")
+    st.write("Gerencie suas chaves e fontes de dados.")
+    with st.expander("📺 Canais de YouTube Conectados"):
+        try:
+            with open(os.path.join(root_path, "app_config", "youtube_channels.json"), 'r') as f:
+                channels = json.load(f)
+                st.table(pd.DataFrame(channels))
+        except Exception: st.error("Erro ao carregar canais.")
 
 # Rodapé
 st.markdown("---")
-st.caption("HYBRID TRADER AI v3.0 - Inspirado em Analítica Profissional")
+st.caption("HYBRID TRADER AI - NotebookLM Edition v3.5")

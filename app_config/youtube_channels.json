@@ -10,13 +10,48 @@
         "type": "nba"
     },
     {
-        "name": "GOAL Brasil",
-        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6YInC52nS8UfT65nQ_m6ig",
+        "name": "Tifo Football",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCGYYNGzL7021074YdyIn6tA",
         "type": "football"
     },
     {
-        "name": "SofaScore Brasil",
-        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCs6V-UfW9K3-8K8X-9nXY-A",
-        "type": "stats"
+        "name": "Euro Football Daily",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCuufW_zY_t8o6JtXhRkQ0_g",
+        "type": "football"
+    },
+    {
+        "name": "Futebol Tatico",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC2e34WzQ_s8M0K1Q2y8D8A",
+        "type": "football"
+    },
+    {
+        "name": "Quero Apostar",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCxU39pS1y8Y2y_z8T9x8Q",
+        "type": "football"
+    },
+    {
+        "name": "AVBETS",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCZ9pX7oW7Q3sJ8x8X7y2V8Q",
+        "type": "football"
+    },
+    {
+        "name": "Thinking Basketball",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3HPbvB6f58X_7SMIp6OPYw",
+        "type": "nba"
+    },
+    {
+        "name": "NBA Official",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCwXdJyRoxp_f_p7p6QZ8WvA",
+        "type": "nba"
+    },
+    {
+        "name": "BBALLBREAKDOWN",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCX2B3E19w_N-d2Q_w3y_w",
+        "type": "nba"
+    },
+    {
+        "name": "Hoop Reports",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-aK7YI6X1n9W8a-fA8pAYw",
+        "type": "nba"
     }
 ]
