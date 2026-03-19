@@ -62,8 +62,8 @@ class SportsAPI:
             # Mapeamento de mercados para NBA
             markets = "h2h"
             if sport_label.lower() == "nba":
-                # Incluir props conforme solicitado (Phase 24)
-                markets = "h2h,totals,player_points,player_rebounds,player_assists,player_double_double"
+                # Revertendo para mercados básicos suportados pelo endpoint /odds
+                markets = "h2h,totals"
             
             params = {
                 "apiKey": self.odds_key,
@@ -75,12 +75,14 @@ class SportsAPI:
             response = requests.get(url, params=params, timeout=10)
             
             # LOGAR RESPOSTA COMPLETA (MODO DEBUG)
+            if response.status_code == 401:
+                msg = "LIMITE DE CRÉDITOS DA API ATINGIDO (Status 401). Por favor, verifique seu plano no the-odds-api.com"
+                print(f"CRITICAL ERROR: {msg}")
+                raise Exception(msg)
+            
             if response.status_code != 200:
                 print(f"ERRO COMPLETO API: Status {response.status_code} - {response.text}")
                 return []
-            
-            data = response.json()
-            print(f"RESPOSTA API (primeiros 200 chars): {str(data)[:200]}...")
             
             matches = []
             for g in data:

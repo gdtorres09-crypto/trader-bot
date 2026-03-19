@@ -283,20 +283,28 @@ class BettingAnalyst:
 
         log(f"⚽ Buscando odds reais no mercado ({sport_filter})...")
         all_matches = []
-        # ... logic for dynamic date ... (already applied but I'll add logs here)
-        if target_date:
-            from datetime import datetime
-            today = datetime.now().date()
-            diff = (target_date - today).days
-            for offset in [diff, diff + 1]:
-                 if offset < 0: continue
-                 matches = self.api.get_upcoming_matches(days_offset=offset)
-                 if matches: all_matches.extend(matches)
-        else:
-            for offset in [0, 1]:
-                matches = self.api.get_upcoming_matches(days_offset=offset)
-                if matches: all_matches.extend(matches)
+        try:
+            if target_date:
+                from datetime import datetime
+                today = datetime.now().date()
+                diff = (target_date - today).days
+                for offset in [diff, diff + 1]:
+                     if offset < 0: continue
+                     matches = self.api.get_upcoming_matches(sport=sport_filter.lower() if sport_filter != "TODOS" else "football", days_offset=offset)
+                     if matches: all_matches.extend(matches)
+            else:
+                for offset in [0, 1]:
+                    matches = self.api.get_upcoming_matches(sport=sport_filter.lower() if sport_filter != "TODOS" else "football", days_offset=offset)
+                    if matches: all_matches.extend(matches)
+        except Exception as e:
+            if "CRÉDITOS" in str(e):
+                log(f"⚠️ {str(e)}")
+            else:
+                log(f"❌ Erro na API: {e}")
         
+        if not all_matches and tactical_insights:
+            log(f"ℹ️ **MODO ANALÍTICO**: API de Odds indisponível ou sem jogos, mas {len(tactical_insights)} insights táticos extraídos do YouTube.")
+
         log(f"📈 {len(all_matches)} jogos identificados na API para análise.")
 
         opportunities = []
