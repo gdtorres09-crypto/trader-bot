@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 class YouTubeMonitor:
     def __init__(self, kp=None):
         self.kp = kp
-        self.channels_file = "config/youtube_channels.json"
+        # Atualizado para o novo nome da pasta de config
+        self.channels_file = "app_config/youtube_channels.json"
         self.history_file = "data/youtube_seen_videos.json"
         self._ensure_files()
 

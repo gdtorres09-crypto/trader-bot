@@ -213,71 +213,74 @@ class BettingAnalyst:
     def get_all_opportunities(self) -> list:
         """
         Busca todos os jogos disponíveis e extrai probabilidades 
-        para alimentar o AutoTrader.
+        para alimentar o AutoTrader e o Painel Premium.
         """
         # 1. INTEGRAR YOUTUBE (MODO REAL)
-        # Buscar novos vídeos dos canais configurados
         new_videos = self.yt_monitor.check_for_new_videos()
         tactical_insights = []
         for v in new_videos:
-            result = self.kp.process_url(v['link'])
-            if result.get('ok'):
-                # Extrair tática usando IA
-                insights = self.elite.process_tactical_info(result['content'])
-                tactical_insights.append({"teams": insights['teams'], "tactical_brief": insights['tactics']})
+            res = self.kp.process_url(v['link'])
+            if res.get('ok'):
+                # Extrair tática usando a IA Elite
+                tactical_res = self.elite._analyze_youtube_content(res['content'])
+                if "VÍDEO DE BAIXA QUALIDADE" not in tactical_res:
+                    tactical_insights.append({
+                        "id": v['id'],
+                        "title": v['title'],
+                        "channel": v['channel'],
+                        "analysis": tactical_res
+                    })
 
-        # 2. Buscar jogos de hoje e amanhã
-        matches_today = self.api.get_upcoming_matches(days_offset=0)
-        matches_tomorrow = self.api.get_upcoming_matches(days_offset=1)
-        all_matches = (matches_today or []) + (matches_tomorrow or [])
+        # 2. Buscar jogos (Hoje e Amanhã)
+        all_matches = []
+        for offset in [0, 1]:
+            matches = self.api.get_upcoming_matches(days_offset=offset)
+            if matches: all_matches.extend(matches)
         
         opportunities = []
         for m in all_matches:
             match_odds = m.get('odds', {})
             if not match_odds: continue
 
-            # Verificar se algum Insight de YouTube cita os times deste jogo
-            match_context = ""
+            # Cross-reference YouTube Insights
+            match_insight = None
             prob_adj = 0.0
             for insight in tactical_insights:
-                if m['home'].lower() in str(insight['teams']).lower() or m['away'].lower() in str(insight['teams']).lower():
-                    match_context += f" | {insight['tactical_brief']}"
-                    prob_adj += 0.05 # Bônus de confiança para análise com vídeo
+                # Heurística de matching simples por nome dos times no título ou análise
+                if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
+                    match_insight = insight
+                    prob_adj = 0.05 # Bônus por termos vídeo corroborando
+                    break
 
-            # Iterar por todos os mercados disponíveis nas odds
             for market_label, odd in match_odds.items():
-                if odd <= 1.2: continue # Evitar odds sem valor
+                if odd <= 1.2: continue
                 
-                # Heurística de probabilidade (Phase 24 - Expansão)
+                # Predição ML como base
                 pred = self.ml_model.predict_result(m['home'], m['away'])
                 
-                # Se for mercado H2H (Vencedor)
-                prob = 0.5 + prob_adj # Adiciona ajuste do vídeo
+                # Lógica de Mercado
+                prob = 0.5 + prob_adj
                 market_name = market_label
                 if "h2h" in market_label:
                     if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj
                     elif m['away'] in market_label: prob = (pred['probs']['away'] / 100.0) + prob_adj
-                    market_name = "Vencedor da Partida"
+                    market_name = "Vencedor (ML)"
                 elif "totals" in market_label:
-                    prob = 0.55 + prob_adj # Heurística para Over/Under
-                    market_name = "Total de Pontos/Gols"
-                elif "player_" in market_label:
-                    # Tentar extrair nome do jogador do label (ex: player_points_LeBron James_Over 25.5)
-                    parts = market_label.split("_")
-                    player = parts[2] if len(parts) > 2 else "Jogador"
-                    prop_type = parts[1].replace("player", "").strip()
-                    detail = parts[3] if len(parts) > 3 else ""
-                    market_name = f"Prop: {player} ({prop_type}) {detail}"
-                    prob = 0.52 + prob_adj # Heurística
+                    prob = 0.55 + prob_adj
+                    market_name = "Gols Over/Under"
+                
+                # Consenso: Média entre Probability (ML) e Confiança (Stats) + Insight
+                consensus = (prob + (pred['confidence']/100.0)) / 2.0
 
                 opportunities.append({
                     'home': m['home'],
                     'away': m['away'],
                     'market': market_name,
                     'odd': odd,
-                    'probability': min(prob, 0.95), # Cap em 95%
-                    'confidence': (pred['confidence'] / 100.0) + (0.1 if prob_adj > 0 else 0),
-                    'reason': f"Análise Híbrida: {match_context if match_context else 'Algoritmo ML + Stats'}"
+                    'probability': min(prob, 0.95),
+                    'consensus_score': min(consensus, 0.95),
+                    'insight': match_insight['analysis'] if match_insight else "Dados Estatísticos + Algoritmo ML",
+                    'reason': f"Consenso Híbrido ({'YouTube + ML' if match_insight else 'ML Pure Data'})"
                 })
             
         return opportunities
