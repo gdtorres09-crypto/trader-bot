@@ -114,10 +114,11 @@ class AutoTrader:
             # 2. Calcular EV
             ev = self.calculate_ev(opt['probability'], opt['odd'])
             
-            # 3. Filtrar apenas EV Positivo (ou todos em modo debug)
-            if ev > 0.02 or debug_mode: 
-                prefix = "🧪 [DEBUG] " if debug_mode and ev <= 0.02 else ""
-                log(f"{prefix}✅ ANALISADO: {opt['home']} vs {opt['away']} (EV: {ev:+.2f})")
+            # 3. Filtrar apenas EV Positivo (ou todos em modo debug, ou Informacionais)
+            is_informational = opt.get('odd') == 1.0
+            if ev > 0.02 or debug_mode or is_informational: 
+                prefix = "🧪 [DEBUG] " if (debug_mode and ev <= 0.02 and not is_informational) else ""
+                log(f"{prefix}✅ ANALISADO: {opt['home']} vs {opt['away']} (EV: {ev:+.2f} | Tipo: {'INFO' if is_informational else 'VALUE'})")
                 opt['ev'] = ev
                 opt['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
@@ -125,14 +126,12 @@ class AutoTrader:
                 opt['stake'] = self.calculate_stake(ev, opt.get('confidence', 0.5), current_bankroll)
                 
                 msg = self.format_signal(opt)
-                if debug_mode and ev <= 0.02:
+                if debug_mode and ev <= 0.02 and not is_informational:
                     msg = "⚠️ **RELATÓRIO DEBUG: EV BAIXO**\n" + msg
                 
                 signals.append(msg)
                 if not debug_mode: # Não entupir histórico com logs de debug
                     self.sent_signals.append(opt)
-            else:
-                log(f"❌ Filtrado (EV {ev:+.2f} abaixo do limite) em {opt['home']} vs {opt['away']}")
         
         if signals:
             log(f"💎 FIM: {len(signals)} NOVAS GEMS GERADAS!")

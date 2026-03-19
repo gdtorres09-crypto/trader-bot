@@ -176,11 +176,16 @@ with tab1:
         st.metric("Filtro Ativo", f"{sport_filter} / {target_date.strftime('%d/%m')}")
 
     st.markdown("### 🔥 ÚLTIMAS OPORTUNIDADES DETECTADAS")
+    
+    # NOVOS SINAIS DESTA SESSÃO (Live Feed)
+    if st.session_state.get('signals'):
+        st.subheader("💎 GEMS GERADAS NESTA VARREDURA")
+        for sig in st.session_state.signals:
+            st.markdown(sig)
+        st.markdown("---")
+        st.subheader("📜 HISTÓRICO ANTERIOR")
+
     if not df_history.empty:
-        # Filtrar histórico se necessário (simulação)
-        st.dataframe(df_history.copy().sort_values(by="timestamp", ascending=False).head(10), use_container_width=True)
-    else:
-        st.info("Nenhum sinal detectado ainda. Inicie a varredura.")
 
     if run_scan:
         has_status = hasattr(st, "status")
