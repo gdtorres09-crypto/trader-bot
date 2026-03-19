@@ -82,21 +82,24 @@ class AutoTrader:
             f"_(Fontes: API Real-Time + YouTube Insights + Expert Context)_"
         )
 
-    async def run_analysis_cycle(self) -> List[str]:
+    async def run_analysis_cycle(self, sport_filter: str = "TODOS", target_date = None, log_callback = None, debug_mode: bool = False) -> List[str]:
         """
-        Executa um ciclo completo de análise.
-        Retorna lista de strings prontas para enviar ao Telegram.
+        Executa um ciclo completo de análise com filtros de esporte e data.
         """
-        logger.info("Iniciando ciclo automático de 10 minutos...")
+        def log(msg):
+            if log_callback: log_callback(msg)
+            logger.info(msg)
+
+        log(f"🚀 Iniciando ciclo: Sport={sport_filter}, Data={target_date} (Debug={debug_mode})")
         
-        # 1. Buscar jogos e odds
-        # Usamos o BettingAnalyst para consolidar os dados
-        opportunities = self.agent.get_all_opportunities() # Novo método que implementaremos
+        # 1. Buscar jogos e odds com filtros
+        opportunities = self.agent.get_all_opportunities(sport_filter, target_date)
+        
+        log(f"🔎 Encontradas {len(opportunities)} oportunidades brutas.")
         
         signals = []
         for opt in opportunities:
-            # Chave de deduplicação usando os dados básicos
-            # Verificamos se já enviamos esse jogo/mercado/odd hoje
+            # Chave de deduplicação
             already_sent = any(
                 s['home'] == opt['home'] and 
                 s['away'] == opt['away'] and 
@@ -104,25 +107,37 @@ class AutoTrader:
                 for s in self.sent_signals
             )
             
-            if already_sent:
+            if already_sent and not debug_mode:
+                log(f"⏩ Pulando sinal duplicado: {opt['home']} vs {opt['away']}")
                 continue
                 
             # 2. Calcular EV
             ev = self.calculate_ev(opt['probability'], opt['odd'])
             
-            # 3. Filtrar apenas EV Positivo (Phase 24)
-            if ev > 0.02: 
+            # 3. Filtrar apenas EV Positivo (ou todos em modo debug)
+            if ev > 0.02 or debug_mode: 
+                prefix = "🧪 [DEBUG] " if debug_mode and ev <= 0.02 else ""
+                log(f"{prefix}✅ ANALISADO: {opt['home']} vs {opt['away']} (EV: {ev:+.2f})")
                 opt['ev'] = ev
                 opt['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                # Acessa o valor numérico dentro do objeto BankrollOptimizer
+                
                 current_bankroll = self.agent.bankroll.bankroll
                 opt['stake'] = self.calculate_stake(ev, opt.get('confidence', 0.5), current_bankroll)
                 
-                # Formatar e adicionar
-                signals.append(self.format_signal(opt))
-                self.sent_signals.append(opt) # Salvar objeto completo no histórico
+                msg = self.format_signal(opt)
+                if debug_mode and ev <= 0.02:
+                    msg = "⚠️ **RELATÓRIO DEBUG: EV BAIXO**\n" + msg
+                
+                signals.append(msg)
+                if not debug_mode: # Não entupir histórico com logs de debug
+                    self.sent_signals.append(opt)
+            else:
+                log(f"❌ Filtrado (EV {ev:+.2f} abaixo do limite) em {opt['home']} vs {opt['away']}")
         
         if signals:
+            log(f"💎 FIM: {len(signals)} NOVAS GEMS GERADAS!")
             self._save_history()
+        else:
+            log("⚠️ FIM: Nenhuma gem nova encontrada nos parâmetros atuais.")
             
         return signals

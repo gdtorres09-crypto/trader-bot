@@ -53,5 +53,40 @@
         "name": "Hoop Reports",
         "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-aK7YI6X1n9W8a-fA8pAYw",
         "type": "nba"
+    },
+    {
+        "name": "Theo Borges",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCeK3QjM-S_5Y_h8-L8m2FmQ",
+        "type": "football"
+    },
+    {
+        "name": "Freitas Tipster",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-n0S2N0_zX9_qL-K_c4ZpQ",
+        "type": "football"
+    },
+    {
+        "name": "BOLEIROS TIPS",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCvG2X68YJ4J-V1v1k1h90hA",
+        "type": "football"
+    },
+    {
+        "name": "Canal Mundo Bet",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC_2_TYzQ9szZs-Ir9RxLV-w",
+        "type": "football"
+    },
+    {
+        "name": "Guedestips",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-hA65Fjv5X8h-J92zc_L8Q",
+        "type": "nba"
+    },
+    {
+        "name": "Guy Boston Sports",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCVtnLXbX0GeiV8CfM1-m_WA",
+        "type": "nba"
+    },
+    {
+        "name": "PickDawgz",
+        "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC2J_Hn8J580a1wH8lqH6y7g",
+        "type": "nba"
     }
 ]

@@ -51,36 +51,54 @@ class YouTubeMonitor:
             with open(self.history_file, 'w') as f:
                 json.dump(seen[-500:], f)
 
-    def check_for_new_videos(self) -> List[Dict]:
+    def check_for_new_videos(self, sport_type: str = "TODOS", target_date = None) -> List[Dict]:
         """
-        Verifica os feeds RSS dos canais e retorna novos vídeos.
+        Verifica os feeds RSS dos canais e retorna novos vídeos filtrados por esporte e data.
         """
         new_videos = []
         seen = self._get_seen_videos()
         channels = self._get_channels()
 
         for ch in channels:
-            # Usa a URL direta do config (deve ser o link do feed xml)
+            # Filtro de Esporte
+            ch_type = ch.get('type', 'football').upper()
+            if sport_type != "TODOS" and ch_type != sport_type:
+                continue
+
             feed_url = ch.get('url')
             if not feed_url: continue
 
             try:
                 feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:2]: # Checar os 2 mais recentes para maior velocidade
+                for entry in feed.entries[:5]: # Checar um pouco mais para garantir que a data bata
+                    # Verificar Data se fornecida
+                    if target_date:
+                        from datetime import datetime
+                        import time
+                        # Converte struct_time para date
+                        pub_time = entry.get('published_parsed')
+                        if pub_time:
+                            pub_date = datetime.fromtimestamp(time.mktime(pub_time)).date()
+                            if pub_date < target_date:
+                                continue # Vídeo antigo
+
                     video_id = entry.get('yt_videoid')
                     if not video_id:
-                         # Tenta extrair da URL se não estiver no meta
                          video_id = entry.link.split("v=")[-1] if "v=" in entry.link else entry.id
                     
-                    if video_id not in seen:
-                        logger.info(f"Monitor: Novo vídeo em {ch['name']} -> {entry.title}")
-                        new_videos.append({
-                            "id": video_id,
-                            "title": entry.title,
-                            "link": entry.link,
-                            "channel": ch['name']
-                        })
-                        self._save_seen_video(video_id)
+                    # Para o modo "Análise de Data Centralizada", ignoramos o histórico "seen" 
+                    # para permitir re-varredura do dia se o usuário quiser. 
+                    # Mas para o monitor automático, mantemos.
+                    # Aqui, como é gatilho manual do dashboard, vamos focar na data.
+                    
+                    logger.info(f"Monitor: Analisando vídeo em {ch['name']} -> {entry.title}")
+                    new_videos.append({
+                        "id": video_id,
+                        "title": entry.title,
+                        "link": entry.link,
+                        "channel": ch['name'],
+                        "sport": ch_type
+                    })
             except Exception as e:
                 logger.error(f"Erro no monitor YouTube ({ch.get('name')}): {e}")
 

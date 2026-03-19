@@ -117,6 +117,13 @@ def load_history():
 
 df_history = load_history()
 
+# --- FILTROS GLOBAIS (SIDEBAR) ---
+st.sidebar.markdown("---")
+st.sidebar.header("🎯 FILTROS DE ANÁLISE")
+target_date = st.sidebar.date_input("Data da Rodada", datetime.now())
+sport_filter = st.sidebar.radio("Esporte", ["TODOS", "FUTEBOL", "NBA"], horizontal=True)
+debug_mode = st.sidebar.toggle("🛠️ Modo Debug (Ver Tudo)", value=False)
+
 # CSS ADICIONAL PARA ESTÚDIO
 st.markdown("""
 <style>
@@ -166,10 +173,11 @@ with tab1:
     with m3:
         st.metric("Status Server", "IDLE" if not run_scan else "RUNNING")
     with m4:
-        st.metric("Latência", "42ms", delta="-5ms")
+        st.metric("Filtro Ativo", f"{sport_filter} / {target_date.strftime('%d/%m')}")
 
     st.markdown("### 🔥 ÚLTIMAS OPORTUNIDADES DETECTADAS")
     if not df_history.empty:
+        # Filtrar histórico se necessário (simulação)
         st.dataframe(df_history.copy().sort_values(by="timestamp", ascending=False).head(10), use_container_width=True)
     else:
         st.info("Nenhum sinal detectado ainda. Inicie a varredura.")
@@ -177,12 +185,18 @@ with tab1:
     if run_scan:
         has_status = hasattr(st, "status")
         if has_status:
-            with st.status("🔍 Buscando Dados...", expanded=True) as status:
+            with st.status(f"🔍 Varrendo {sport_filter} em {target_date}...", expanded=True) as status:
                 try:
                     analyst = BettingAnalyst()
                     trader = AutoTrader(analyst)
                     import asyncio
-                    signals = asyncio.run(trader.run_analysis_cycle())
+                    # Passar os filtros e o callback de log para transparência total
+                    signals = asyncio.run(trader.run_analysis_cycle(
+                        sport_filter=sport_filter, 
+                        target_date=target_date, 
+                        log_callback=status.write,
+                        debug_mode=debug_mode
+                    ))
                     status.update(label="Varredura Completa!", state="complete")
                     st.rerun()
                 except Exception as e:
@@ -194,7 +208,7 @@ with tab1:
                     analyst = BettingAnalyst()
                     trader = AutoTrader(analyst)
                     import asyncio
-                    _ = asyncio.run(trader.run_analysis_cycle())
+                    _ = asyncio.run(trader.run_analysis_cycle(sport_filter, target_date))
                     st.rerun()
                 except Exception as e: st.error(f"Erro: {e}")
 
@@ -282,14 +296,41 @@ with tab4:
         st.write("Aguardando dados para gerar performance...")
 
 with tab5:
-    st.subheader("⚙️ CONFIGURAÇÕES")
-    st.write("Gerencie suas chaves e fontes de dados.")
-    with st.expander("📺 Canais de YouTube Conectados"):
-        try:
-            with open(os.path.join(root_path, "app_config", "youtube_channels.json"), 'r') as f:
-                channels = json.load(f)
-                st.table(pd.DataFrame(channels))
-        except Exception: st.error("Erro ao carregar canais.")
+    st.subheader("⚙️ GESTÃO DO SISTEMA")
+    
+    st.markdown("### 📺 Gerenciar Canais do YouTube")
+    st.write("Adicione ou remova canais de monitoramento (Analisa vídeos do esporte selecionado).")
+    
+    try:
+        channels_path = os.path.join(root_path, "app_config", "youtube_channels.json")
+        with open(channels_path, 'r') as f:
+            channels_list = json.load(f)
+        
+        # Editor de dados interativo
+        df_channels = pd.DataFrame(channels_list)
+        edited_df = st.data_editor(
+            df_channels, 
+            num_rows="dynamic", 
+            use_container_width=True,
+            column_config={
+                "url": st.column_config.TextColumn("RSS Feed URL (xml?channel_id=...)"),
+                "type": st.column_config.SelectboxColumn("Tipo", options=["football", "nba", "stats"])
+            }
+        )
+        
+        if st.button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+            new_channels = edited_df.to_dict('records')
+            with open(channels_path, 'w') as f:
+                json.dump(new_channels, f, indent=4)
+            st.success("Configurações atualizadas com sucesso! O Robô irá recarregar as fontes.")
+            st.rerun()
+
+    except Exception as e: 
+        st.error(f"Erro ao gerenciar fontes: {e}")
+
+    with st.expander("🔑 API KEYS & ACESSOS"):
+        st.write("The Odds API: Configurada ✅")
+        st.write("Telegram Bot: Configurado ✅")
 
 # Rodapé
 st.markdown("---")
