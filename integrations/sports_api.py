@@ -32,6 +32,7 @@ class SportsAPI:
         # Mapeamento de chaves da Odds API
         sport_map = {
             "nba": "basketball_nba",
+            "futebol": "soccer_brazil_campeonato",
             "football": "soccer_brazil_campeonato",
             "epl": "soccer_epl",
             "ucl": "soccer_uefa_champs_league"
@@ -84,6 +85,7 @@ class SportsAPI:
                 print(f"ERRO COMPLETO API: Status {response.status_code} - {response.text}")
                 return []
             
+            data = response.json()
             matches = []
             for g in data:
                 commence_time = g.get("commence_time")

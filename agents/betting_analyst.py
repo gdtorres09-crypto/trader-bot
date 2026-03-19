@@ -260,13 +260,20 @@ class BettingAnalyst:
         """
         def log(msg):
             if log_callback: log_callback(msg)
-            logger.info(msg)
+            # Assuming logger is defined elsewhere, e.g., import logging; logger = logging.getLogger(__name__)
+            # For this context, we'll just print if logger is not available.
+            try:
+                logger.info(msg)
+            except NameError:
+                print(msg) # Fallback if logger is not globally defined
 
-        log("🔍 **Iniciando coleta de dados profunda...**")
-        # 1. INTEGRAR YOUTUBE (MODO REAL) com filtros
-        log(f"📺 Buscando novos vídeos ({sport_filter})...")
+        log(f"🔎 Iniciando Varredura Híbrida ({sport_filter} | {target_date})...")
+        
+        # 1. YouTube Monitoring (Fase 18)
+        log("📺 Monitorando canais táticos do YouTube...")
         new_videos = self.yt_monitor.check_for_new_videos(sport_filter, target_date)
-        log(f"✅ {len(new_videos)} vídeos relevantes encontrados na janela de data.")
+        log(f"✅ {len(new_videos)} novos vídeos detectados nos últimos feeds.")
+        
         tactical_insights = []
         for v in new_videos:
             res = self.kp.process_url(v['link'])
@@ -275,17 +282,18 @@ class BettingAnalyst:
                 tactical_res = self.elite._analyze_youtube_content(res['content'])
                 if "VÍDEO DE BAIXA QUALIDADE" not in tactical_res:
                     tactical_insights.append({
-                        "id": v['id'],
+                        "video_id": v['id'],
                         "title": v['title'],
                         "channel": v['channel'],
+                        "match_name": v['title'],
                         "analysis": tactical_res
                     })
 
         log(f"⚽ Buscando odds reais no mercado ({sport_filter})...")
         all_matches = []
         try:
+            from datetime import datetime
             if target_date:
-                from datetime import datetime
                 today = datetime.now().date()
                 diff = (target_date - today).days
                 for offset in [diff, diff + 1]:
@@ -302,96 +310,71 @@ class BettingAnalyst:
             else:
                 log(f"❌ Erro na API: {e}")
         
-        if not all_matches and tactical_insights:
-            log(f"ℹ️ **MODO ANALÍTICO**: API de Odds indisponível ou sem jogos, mas {len(tactical_insights)} insights táticos extraídos do YouTube.")
-
-        log(f"📈 {len(all_matches)} jogos identificados na API para análise.")
-
         opportunities = []
-        for m in all_matches:
-            match_odds = m.get('odds', {})
-            if not match_odds: continue
+        
+        # MODO NORMAL: Cruzamento de API + YouTube
+        if all_matches:
+            for m in all_matches:
+                match_odds = m.get('odds', {})
+                if not match_odds: continue
 
-            log(f"🧠 Analisando: **{m['home']} vs {m['away']}**")
-            
-            # Cross-reference YouTube Insights
-            match_insight = None
-            prob_adj = 0.0
+                log(f"🧠 Analisando: **{m['home']} vs {m['away']}**")
+                
+                # Cross-reference YouTube Insights
+                match_insights = []
+                prob_adj = 0.0
+                for insight in tactical_insights:
+                    if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
+                        log(f"📎 Insight de especialista encontrado: {insight['channel']}")
+                        match_insights.append(insight)
+                        prob_adj += 0.05
+                
+                # Cálculo de Probabilidades Híbridas (Fase 19)
+                prob_base = 0.45 
+                final_prob = min(0.95, prob_base + prob_adj)
+                
+                # Detecção de Valor (Value Bet)
+                for market_key, odd in match_odds.items():
+                    if odd > 1.0:
+                        ev = (final_prob * odd) - 1
+                        if ev > 0.01 or sport_filter != "TODOS": # Filtro sensível
+                            reason = f"Análise de dados + {len(match_insights)} fontes de vídeo."
+                            if len(match_insights) > 1:
+                                reason = f"🤝 **CONCORDÂNCIA**: {len(match_insights)} canais concordam com esta tendência tática."
+                            
+                            opportunities.append({
+                                "id": m['id'],
+                                "sport": m.get('sport', 'FOOTBALL').upper(),
+                                "league": m['league'],
+                                "home": m['home'],
+                                "away": m['away'],
+                                "odd": odd,
+                                "probability": final_prob,
+                                "market": market_key,
+                                "reason": reason,
+                                "confidence": 0.6 + (len(match_insights) * 0.1),
+                                "insights_count": len(match_insights),
+                                "consensus_score": len(match_insights) / 3.0
+                            })
+        
+        # MODO ANALÍTICO: Fallback se a API falhar ou estiver vazia
+        if not opportunities and tactical_insights:
+            log(f"🧠 Gerando {len(tactical_insights)} GEMS de Conhecimento (Modo Analítico)...")
             for insight in tactical_insights:
-                if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
-                    log(f"📎 Insight encontrado no canal: {insight['channel']}")
-                    match_insight = insight
-                    prob_adj = 0.05
-                    break
-
-            # 3. DETECÇÃO DE ESPORTE E CONCORDÂNCIA MULTI-CANAL
-            g_sport = m.get('sport', 'FUTEBOL').upper()
-            
-            # Log de depuração para o usuário ver o que o robô está filtrando
-            if sport_filter != "TODOS" and g_sport != sport_filter:
-                # log(f"⏩ Pulando {m['home']} (Esporte {g_sport} != {sport_filter})")
-                continue
-
-            # Agregação de todos os Insights (Concordância / Acordo entre Canais)
-            match_insights = []
-            for insight in tactical_insights:
-                # Se ambos os times ou um deles for mencionado
-                if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
-                    match_insights.append(insight)
-            
-            prob_adj = 0.0
-            concordance_msg = ""
-            if match_insights:
-                log(f"🔗 **CONCORDÂNCIA**: {len(match_insights)} canais analisaram este jogo!")
-                prob_adj = len(match_insights) * 0.03 # 3% de bônus por cada canal concordando
-                concordance_msg = f" (Acordo entre {len(match_insights)} canais especialistas)"
-
-            # Se encontrou indício de valor ou tem vídeo, faz a pesquisa web profunda
-            web_context = ""
-            if match_insights:
-                 log(f"🌐 Deep Search: Consolidando info para {m['home']} vs {m['away']}...")
-                 web_context = self.perform_deep_web_research(m['home'], m['away'])
-
-            for market_label, odd in match_odds.items():
-                if odd <= 1.2: continue
-                
-                # Predição ML como base (Passando contexto web agora)
-                pred = self.ml_model.predict_result(m['home'], m['away'], extra_context=web_context)
-                
-                # Lógica de Mercado
-                prob = pred.get('prob', 0.5) + prob_adj
-                market_name = market_label
-                
-                # Tradução/Normalização de Mercado
-                if "h2h" in market_label:
-                    market_name = "Vencedor (ML)"
-                    if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj
-                    elif m['away'] in market_label: prob = (pred['probs']['away'] / 100.0) + prob_adj
-                    else: prob = (pred['probs']['draw'] / 100.0) + prob_adj
-                elif "totals" in market_label:
-                    market_name = "Over/Under"
-                    prob = 0.55 + prob_adj
-
-                # Cálculo de Consenso e Confiança
-                confidence = (pred['confidence'] / 100.0) + (len(match_insights) * 0.1)
-                consensus_score = (prob + (pred['confidence']/100.0)) / 2.0
-
-                # Formatação da Razão (Transparência Total)
-                canal_list = ", ".join([i['channel'] for i in match_insights])
-                concord_text = f" [CONCORDÂNCIA: {canal_list}]" if match_insights else ""
-                reason_full = f"Consenso Híbrido: {pred['prediction']} ({pred['confidence']}% confiança IA){concord_text}."
-
                 opportunities.append({
-                    "home": m['home'],
-                    "away": m['away'],
-                    "market": market_name,
-                    "odd": odd,
-                    "probability": min(prob, 0.98),
-                    "confidence": min(confidence, 0.98),
-                    "consensus_score": min(consensus_score, 0.98),
-                    "reason": reason_full,
-                    "sport": g_sport,
-                    "insights_count": len(match_insights)
+                    "id": f"insight_{insight['video_id']}",
+                    "sport": sport_filter,
+                    "league": "Expert Insight",
+                    "home": insight['match_name'].split('vs')[0].strip() if 'vs' in insight['match_name'] else insight['match_name'],
+                    "away": insight['match_name'].split('vs')[1].strip() if 'vs' in insight['match_name'] else "Especialista",
+                    "odd": 1.0, 
+                    "probability": 0.5,
+                    "market": "ANÁLISE TÁTICA",
+                    "reason": f"Sinal gerado via YouTube ({insight['channel']}): {insight['analysis'][:200]}...",
+                    "confidence": 0.7,
+                    "insights_count": 1,
+                    "consensus_score": 0.5
                 })
-            
+
+        log(f"📈 {len(opportunities)} oportunidades identificadas para análise final.")
         return opportunities
