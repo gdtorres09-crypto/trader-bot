@@ -98,6 +98,33 @@ class KnowledgeProcessor:
             "content": text.strip()[:3000]
         }
 
+    def search_web(self, query: str, max_results: int = 3) -> list:
+        """
+        Realiza uma busca na web usando DuckDuckGo (Gratuito).
+        Retorna uma lista de conteúdos extraídos.
+        """
+        try:
+            from duckduckgo_search import DDGS
+            results = []
+            with DDGS() as ddgs:
+                ddgs_results = [r for r in ddgs.text(query, max_results=max_results)]
+                
+                for r in ddgs_results:
+                    url = r.get('href')
+                    if url:
+                        content_data = self.process_web(url)
+                        if content_data['ok']:
+                            results.append({
+                                "title": r.get('title'),
+                                "snippet": r.get('body'),
+                                "full_content": content_data['content'],
+                                "url": url
+                            })
+            return results
+        except Exception as e:
+            logger.error(f"Erro na busca web DuckDuckGo: {e}")
+            return []
+
     def detect_urls(self, text: str) -> list:
         """Detecta URLs em um texto."""
         return re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)

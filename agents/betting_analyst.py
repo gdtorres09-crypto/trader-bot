@@ -237,13 +237,26 @@ class BettingAnalyst:
         
         return "Tipo de conteúdo não suportado."
 
-    def get_all_opportunities(self) -> list:
+    def perform_deep_web_research(self, home: str, away: str) -> str:
+        """
+        Realiza uma pesquisa profunda na web sobre o confronto.
+        """
+        query = f"{home} x {away} provável escalação desfalques notícias hoje"
+        results = self.kp.search_web(query)
+        
+        research_context = ""
+        for r in results:
+            research_context += f"\n--- FONTE: {r['title']} ---\n{r['full_content'][:1000]}\n"
+        
+        return research_context if research_context else "Nenhuma informação adicional encontrada na web."
+
+    def get_all_opportunities(self, sport_filter: str = "TODOS", target_date = None) -> list:
         """
         Busca todos os jogos disponíveis e extrai probabilidades 
         para alimentar o AutoTrader e o Painel Premium.
         """
-        # 1. INTEGRAR YOUTUBE (MODO REAL)
-        new_videos = self.yt_monitor.check_for_new_videos()
+        # 1. INTEGRAR YOUTUBE (MODO REAL) com filtros
+        new_videos = self.yt_monitor.check_for_new_videos(sport_filter, target_date)
         tactical_insights = []
         for v in new_videos:
             res = self.kp.process_url(v['link'])
@@ -273,20 +286,29 @@ class BettingAnalyst:
             match_insight = None
             prob_adj = 0.0
             for insight in tactical_insights:
-                # Heurística de matching simples por nome dos times no título ou análise
                 if m['home'].lower() in insight['title'].lower() or m['away'].lower() in insight['title'].lower():
                     match_insight = insight
-                    prob_adj = 0.05 # Bônus por termos vídeo corroborando
+                    prob_adj = 0.05
                     break
+
+            # 3. FILTRO DE ESPORTE E PESQUISA WEB profunda
+            g_sport = "FUTEBOL" 
+            if sport_filter != "TODOS" and g_sport != sport_filter:
+                continue
+
+            # Se encontrou indício de valor ou tem vídeo, faz a pesquisa web profunda
+            web_context = ""
+            if match_insight:
+                 web_context = self.perform_deep_web_research(m['home'], m['away'])
 
             for market_label, odd in match_odds.items():
                 if odd <= 1.2: continue
                 
-                # Predição ML como base
-                pred = self.ml_model.predict_result(m['home'], m['away'])
+                # Predição ML como base (Passando contexto web agora)
+                pred = self.ml_model.predict_result(m['home'], m['away'], extra_context=web_context)
                 
                 # Lógica de Mercado
-                prob = 0.5 + prob_adj
+                prob = pred.get('prob', 0.5) + prob_adj
                 market_name = market_label
                 if "h2h" in market_label:
                     if m['home'] in market_label: prob = (pred['probs']['home'] / 100.0) + prob_adj

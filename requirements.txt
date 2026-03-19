@@ -14,3 +14,4 @@ plotly
 altair<5
 tabulate
 humanize
+duckduckgo-search

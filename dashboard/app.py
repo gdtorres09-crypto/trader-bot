@@ -329,7 +329,14 @@ with tab5:
         st.error(f"Erro ao gerenciar fontes: {e}")
 
     with st.expander("🔑 API KEYS & ACESSOS"):
-        st.write("The Odds API: Configurada ✅")
+        from app_config.settings import OPENROUTER_API_KEY, THE_ODDS_API_KEY
+        
+        ai_status = "✅ ATIVA (OpenRouter)" if OPENROUTER_API_KEY else "❌ NÃO CONFIGURADA"
+        st.write(f"Inteligência IA: {ai_status}")
+        
+        odds_status = "✅ ATIVA" if THE_ODDS_API_KEY else "❌ NÃO CONFIGURADA"
+        st.write(f"The Odds API: {odds_status}")
+        
         st.write("Telegram Bot: Configurado ✅")
 
 # Rodapé

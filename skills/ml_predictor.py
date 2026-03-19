@@ -8,7 +8,10 @@ class MLPredictor:
         # Em produção, carregaríamos um modelo (ex: scikit-learn, tensorflow)
         pass
 
-    def predict_result(self, home_team, away_team):
+    def predict_result(self, home_team, away_team, extra_context=""):
+        # Em produção, o extra_context seria processado por um LLM ou modelo NLP
+        # Para simular inteligência, ajustamos a confiança se houver contexto
+        boost = 0.05 if extra_context and "escalação" in extra_context else 0.0
         # Simulação de predição ML
         win_prob = random.uniform(0.3, 0.7)
         draw_prob = random.uniform(0.1, 0.3)
