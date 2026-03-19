@@ -510,24 +510,45 @@ class EliteIntelligenceCore:
         return final_response
 
     def _analyze_youtube_content(self, transcript: str, title: str = "") -> str:
-        """Usa a IA para extrair palpites específicos de especialistas."""
+        """Usa a IA para extrair palpites específicos de especialistas (Sempre em PORTUGUÊS)."""
         prompt = (
-            "Você é um Especialista em Prognósticos de Apostas. Abaixo está a transcrição (ou metadados) de um vídeo do YouTube com dicas de apostas.\n"
+            "Você é um Especialista em Prognósticos de Apostas Profissional.\n"
+            "INSTRUÇÃO CRÍTICA: Responda SEMPRE em PORTUGUÊS (Brasil).\n\n"
+            "ABAIXO ESTÁ O CONTEÚDO DE UM VÍDEO DO YOUTUBE.\n"
             "SUA MISSÃO:\n"
-            "1. Extraia TODOS os jogos mencionados e o PALPITE específico para cada um (ex: 'Lakers vence', 'Over 2.5 gols', 'Ambas Marcam').\n"
-            "2. Se o autor der uma 'Confiança' ou 'Stake' (1/10, etc), inclua.\n"
-            "3. Se for um #shorts ou vídeo curto, tente extrair o máximo possível de nomes de times e tendências.\n"
-            "4. Se o vídeo não contiver palpites reais (ex: apenas notícias ou entretenimento), retorne: 'VÍDEO SEM PALPITES'.\n"
-            "5. FORMATO DE SAÍDA (Obrigatório por jogo):\n"
+            "1. Identifique se o vídeo contém PALPITES DE APOSTAS reais (ex: vitórias, gols, handicap).\n"
+            "2. Se o vídeo for apenas notícias, curiosidades ou entretenimento sem dicas claras de entrada, responda EXATAMENTE: 'VÍDEO SEM PALPITES'.\n"
+            "3. Se houver palpites, extraia-os traduzindo tudo para PORTUGUÊS.\n"
+            "4. FORMATO DE SAÍDA (Obrigatoriamente por jogo):\n"
             "   JOGO: [Time A] vs [Time B]\n"
-            "   PALPITE: [O que apostar]\n"
-            "   RAZÃO: [Resumo de 1 frase do porquê]\n"
-            "   CONFIANÇA: [Se houver]\n\n"
-            f"TÍTULO: {title}\n"
+            "   PALPITE: [O que apostar em PT-BR]\n"
+            "   RAZÃO: [1 frase da justificativa em PT-BR]\n"
+            "   CONFIANÇA: [Alta/Média/Baixa]\n\n"
+            f"TÍTULO DO VÍDEO: {title}\n"
             f"CONTEÚDO:\n{transcript[:10000]}"
         )
-        # Usamos o modelo pesado para maior precisão na extração de nomes
         return self.llm_lite.chat(prompt, model_type="pro")
+
+    def generate_studio_content(self, content_type: str, game_data: dict) -> str:
+        """Gera conteúdo real para o Estúdio usando o LLM."""
+        if not game_data:
+            return "Selecione um jogo para gerar o conteúdo."
+
+        templates = {
+            "audio": "Crie um roteiro de PODCAST de 1 minuto sobre este jogo, focando em análise tática e aposta sugerida. Seja empolgante e profissional.",
+            "mindmap": "Gera um código MERMAID (graph TD) que represente um mapa mental da análise deste jogo (Força, Fraqueza, Mercado, Risco).",
+            "flashcards": "Crie 3 perguntas e respostas (JSON format: [{'Q': '...', 'A': '...'}]) sobre os pontos chave deste confronto para estudo de apostas.",
+            "slides": "Crie uma estrutura de 3 slides em texto para uma apresentação deste jogo.",
+            "pdf": "Crie um resumo executivo profissional para um relatório PDF sobre este confronto."
+        }
+
+        prompt = (
+            f"Aja como um Analista de Elite. {templates.get(content_type, 'Resuma o jogo.')}\n"
+            f"DADOS DO JOGO: {json.dumps(game_data)}\n"
+            "RESPONDA EM PORTUGUÊS."
+        )
+        
+        return self.llm_lite.chat(prompt, model_type="light")
 
     def _extract_game(self, user_id: int, text: str):
         """

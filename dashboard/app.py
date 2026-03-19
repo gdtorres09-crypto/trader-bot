@@ -280,7 +280,10 @@ with tab3:
              st.info(res)
     with row1[1]:
         st.markdown('<div class="studio-card"><div class="studio-icon">📖</div><div class="studio-title">Apresentação</div></div>', unsafe_allow_html=True)
-        if st.button("Gerar Slides", key="slides"): st.code(f"# Slides: {selected_game['home'] if selected_game else 'Geral'}\n- Key Metrics\n- Top Picks")
+        if st.button("Gerar Slides", key="slides"):
+             analyst = BettingAnalyst()
+             res = analyst.generate_studio_content("slides", selected_game)
+             st.code(res)
     with row1[2]:
         st.markdown('<div class="studio-card"><div class="studio-icon">📽️</div><div class="studio-title">Resumo em Vídeo</div></div>', unsafe_allow_html=True)
         if st.button("Recortar YT", key="video"): st.write("Highlighting top segments from connected channels...")
@@ -289,12 +292,16 @@ with tab3:
         if st.button("Gerar Mapa", key="mindmap"): 
             analyst = BettingAnalyst()
             mermaid_code = analyst.generate_studio_content("mindmap", selected_game)
-            st.code(mermaid_code, language="mermaid")
+            st.markdown(f"```mermaid\n{mermaid_code}\n```")
 
     row2 = st.columns(4)
     with row2[0]:
         st.markdown('<div class="studio-card"><div class="studio-icon">📄</div><div class="studio-title">Relatórios</div></div>', unsafe_allow_html=True)
-        if st.button("PDF Pro", key="pdf"): st.success("Relatório PDF pronto para download.")
+        if st.button("PDF Pro", key="pdf"): 
+             analyst = BettingAnalyst()
+             res = analyst.generate_studio_content("pdf", selected_game)
+             st.markdown(res)
+             st.success("Relatório gerado!")
     with row2[1]:
         st.markdown('<div class="studio-card"><div class="studio-icon">📇</div><div class="studio-title">Cartões Didáticos</div></div>', unsafe_allow_html=True)
         if st.button("Gerar Flashcards", key="flash"): 

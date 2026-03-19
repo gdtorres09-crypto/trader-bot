@@ -95,8 +95,8 @@ class YouTubeMonitor:
                 try:
                     import re
                     from duckduckgo_search import DDGS
-                    # Busca de VÍDEOS: Muito mais direta e confiável
-                    query = f'site:youtube.com "{ch["name"]}" {ch_item_type} palpites'
+                    # Busca de VÍDEOS: Focada em PALPITES e PROGNÓSTICOS (PT-BR)
+                    query = f'site:youtube.com "{ch["name"]}" palpites prognosticos {ch_item_type} hoje'
                     with DDGS() as ddgs:
                         try:
                             results = list(ddgs.videos(query, max_results=8))
