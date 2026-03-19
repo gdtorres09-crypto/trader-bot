@@ -215,18 +215,23 @@ with tab1:
 # --- TAB 2: INTELIGÊNCIA HÍBRIDA ---
 with tab2:
     st.subheader("🧠 CONSENSO YOUTUBE & MERCADO")
-    # Mostrar fontes ativas (NotebookLM Style)
     st.markdown("---")
     c1, c2, c3 = st.columns(3)
-    c1.info("📺 **FONTES YOUTUBE**: 11 Canais (Tifo, NBA, AVBETS...)")
-    c2.success("📊 **FONTES MERCADO**: Odds Live (Betano/Kaizen)")
-    c3.warning("🧠 **CÉREBRO IA**: GPT-4o / Claude Analysis")
+    c1.info("📺 **FONTES YOUTUBE**: 15 Canais Ativos (NBA Official, Tifo, AVBETS...)")
+    c2.success("📊 **FONTES MERCADO**: Odds Ao Vivo (Betano / Kaizen API)")
+    c3.warning("🧠 **CÉREBRO IA**: Analista Híbrido Elite (OpenRouter + DeepSearch)")
     
-    st.markdown("#### Últimos Insights Cross-Reference")
-    st.markdown("""
-    - **Lakers vs Warriors**: NBA Official + Thinking Basketball reportam fadiga de Curry. (Confiança: 82%)
-    - **Arsenal v Bayern**: Tifo Football destaca vulnerabilidade tática do Bayern em transição. (Confiança: 75%)
-    """)
+    st.markdown("#### Acordo entre Especialistas (Concordância)")
+    if not df_history.empty:
+        # Filtrar apenas os que tem acordo (usando a nova razão formatada)
+        df_consensus = df_history[df_history['reason'].str.contains('CONCORDÂNCIA', na=False)]
+        if not df_consensus.empty:
+            for _, row in df_consensus.head(5).iterrows():
+                st.success(f"📌 **{row['home']} vs {row['away']}**: {row['reason']}")
+        else:
+            st.info("Varredura iniciada. Buscando pontos de acordo entre os 15 canais...")
+    else:
+        st.info("Inicie uma varredura para cruzar as opiniões dos especialistas em tempo real.")
 
 # --- TAB 3: ESTÚDIO IA (NOTEBOOKLM STYLE) ---
 with tab3:
